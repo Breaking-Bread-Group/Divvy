@@ -1,0 +1,9 @@
+@startuml whatever
+
+thing <- other_thing
+
+class thing
+
+class other_thing
+
+@enduml
