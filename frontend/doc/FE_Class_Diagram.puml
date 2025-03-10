@@ -1,0 +1,111 @@
+
+@startuml Front end class disgram divvy
+
+interface Customer{
+    + void validateAccountInfo()
+}
+
+interface Session{
+    - sessionID: Integer
+    - uID: Integer
+    + void createSession()
+}
+
+class customerInfo{
+    - List<Customer> customers
+    - firstName: String
+    - lastName: String
+    - userName: String
+    - passWord: Hash
+    - email: String
+    - phoneNo: Integer
+    - paymentName: String
+    - experationDate: Date
+    - cardNumber: Integer
+    - SecurityCode: Integer
+    - cardType: String
+    + String getPaymentName()
+    + Date getExperationDate()
+    + Integer getCardNumber()
+    + Integer getSecurityCode()
+    + String getCardType()
+    + String getFirstName()
+    + String getLastName()
+    + String getUserName()
+    + String getPassWord()
+    + String getEmail()
+    + Int getPhoneNo()
+    + void joinGroup()
+    + void createGroup()
+}
+
+class GroupMember{
+    - List<Groups> group
+    - groupID: Integer
+    - splitExpenseID: Integer
+    - uID: Integer
+    - groupAdminUID: Integer
+    - paymentMethod: String
+    -sessionID: Integer
+    - userName: String
+    + Float getBalanceDue()
+    + void payBalanceDue()
+    + void requestRemoval()
+    + void acceptInvitation()
+    + void inviteGroupMembers(Customer customers)
+    + void assignExpensetoGroupMember(Group groups)
+    + void viewExpenseHistory()
+}
+
+class Group{
+    - groupName: String
+    - groupID: Integer
+    - groupAdminUID: Integer
+    - expenseID: Integer
+    - isTemp: Boolean
+    + String getGroupName()
+    + void createBill()
+    + Float getBalanceDue()
+    + void payBalanceDue()
+    + void addGroupMembers(Customer customers)
+    + void removeGroupMembers(Customer customers)
+    + void reversePayment() git add
+    + void deleteGroup()
+
+}
+
+class Expenses{
+    - expenseID: Integer
+    - balanceDue: Float
+    - groupAdminUID: Integer
+    - isTotalBillResolved: Boolean
+    + void assignBilltoGroup(Group groups)
+    + messageGroupPaymentStatus()
+}
+
+class ExpenseSplitter{
+    - expenseID: Integer
+    - List<Expenses> splitExpenses
+    + void evenBillSplit()
+    + void customBillSplit()
+    + Float getBalanceDue()
+    + void getIsTotalBillResolved()
+    + void messageUIDDeclinedPayment()
+}
+
+
+
+
+customerInfo o-- Customer
+
+ExpenseSplitter o-- Session
+
+Group <|-- Session
+
+GroupMember <|-- Group
+Customer <|-- GroupMember
+GroupMember <|-- Expenses
+ExpenseSplitter --|> Expenses
+
+
+@enduml
