@@ -1,0 +1,63 @@
+@startuml Front end class disgram divvy
+
+interface Customer
+
+class customerInfo{
+    - List<Customer>customers
+    - firstName: String
+    - lastName: String
+    - userName: String
+    - passWord: String
+    - email: String
+    - phoneNo: Integer
+    + String getFirstName()
+    + String getLastName()
+    + String getUserName()
+    + String getPassWord()
+    + String getEmail()
+    + Int getPhoneNo()
+    + void joinGroup()
+    + void createGroup()
+}
+
+class GroupAdmin{
+    - List<Group> group
+    - groupName: String
+    - balanceDue: Float
+    + String getGroupName()
+    + void createBill()
+    + Float getBalanceDue()
+    + void payBalanceDue()
+    + void addGroupMembers(Customer customers)
+    + void removeGroupMembers(Customer customers)
+    + void acceptInvitation()
+    + void reversePayment() git add
+    + void deleteGroup()
+
+}
+
+class GroupMember{
+    - List<Groups> group
+    - balanceDue: Float
+    + Float getBalanceDue()
+    + void payBalanceDue()
+    + void requestRemoval()
+    + void acceptInvitation()
+
+}
+
+
+
+
+customerInfo o-- Customer
+
+Customer <|-- GroupAdmin
+Customer <|-- GroupMember
+
+class billSplitter{
+    
+}
+
+
+
+@enduml
