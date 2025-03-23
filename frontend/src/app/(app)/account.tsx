@@ -9,12 +9,15 @@ export default function AccountSettings() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header Icons */}
-      <View style={styles.headerIcons}>
-        <TouchableOpacity onPress={() => router.push('/(app)/home')}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => router.push('/(app)/home')}
+        >
           <Feather name="home" size={24} color="black" />
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.notificationContainer}
+          style={[styles.notificationContainer, styles.iconShadow]}
           onPress={() => router.push('/(app)/notifications')}
         >
           <Feather name="bell" size={24} color="black" />
@@ -94,12 +97,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  headerIcons: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 24,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  profileButton: {
+    padding: 8,
   },
   notificationContainer: {
     position: 'relative',
@@ -112,6 +118,13 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#EF4444',
+  },
+  iconShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   content: {
     flex: 1,

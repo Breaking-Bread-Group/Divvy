@@ -10,11 +10,11 @@ export default function Notifications() {
     <SafeAreaView style={styles.container}>
       {/* Profile and Bell */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(app)/account')}>
-          <Image
-            source={require('../../assets/Account_Settings.png')}
-            style={styles.profileImage}
-          />
+        <TouchableOpacity 
+          style={styles.homeButton}
+          onPress={() => router.push('/(app)/home')}
+        >
+          <Feather name="home" size={24} color="black" />
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.notificationContainer}
@@ -79,10 +79,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  homeButton: {
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   notificationContainer: {
     position: 'relative',
