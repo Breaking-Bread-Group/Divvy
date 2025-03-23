@@ -21,6 +21,7 @@ Divvy is a mobile application designed to simplify group expense management. It 
    ```bash
     http://localhost:8081
    ```
+- In test server, username/password are currently placeholders. Just click Signup/Login to continue.
 
 ## Features
 
