@@ -1,15 +1,17 @@
 import { Text, View } from "react-native";
 
+//Import Login screen
+// In your src/app/index.tsx file
+import Login from '../screens/Login';
+import Signup from '../screens/Signup';
+import {ScrollView} from 'react-native';
+
 export default function Index() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
+      <ScrollView>
+      <Signup />
+      </ScrollView>
   );
 }
+
+
