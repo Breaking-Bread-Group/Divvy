@@ -16,6 +16,12 @@ Divvy is a mobile application designed to simplify group expense management. It 
     npx expo start
    ```
 
+3. Open Server (Open below link for web, or scan QR code for IOS/Android)
+
+   ```bash
+    http://localhost:8081
+   ```
+
 ## Features
 
 - **User Account Management**
