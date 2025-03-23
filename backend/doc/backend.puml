@@ -1,0 +1,119 @@
+@startuml
+
+' Routes incoming http requests towards the proper controller
+class Router {
+    expressApp : express.Application
+    + expressApp.get()
+    + expressApp.post()
+    + expressApp.use()
+}
+
+' Handles repeated responses like error codes or
+' successful calls like updates or deletions working
+class ResponseHelper {
+    + errorResponse()
+    + successResponse()
+}
+
+' Allows server to interface with mysql 
+class Database {
+    URL : string
+    user : string
+    database : string
+    + connect()
+    + query()
+    + disconnect()
+}
+
+' Handles all things login related including registration
+class AuthenticationController {
+    + login()
+    + logout()
+    + register()
+    + checkPassword()
+}
+
+' For adding and updating user information
+class UserController {
+    + NewUser()
+    + UpdateProfile()
+}
+
+' General class for controlling groups
+' if used on its own, assume temporary
+class GroupController {
+    + createGroup()
+    + inviteMember()
+    + removeMember()
+    + joinGroup()
+    + deleteGroup()
+    + seeGroupLogs()
+    + checkPersistent()
+}
+
+' Inheritor of GroupController tailored for
+' persistent groups
+class PersistentGroupController {
+    + renameGroup()
+    + changeAdmin()
+}
+
+' Controls the creation and executing of expenses
+class ExpenseController {
+    + createExpense()
+    + renameExpense()
+    + setTotalCost()
+    + assignToGroup()
+    + assignPercentage()
+    + acceptPercentage()
+    + rejectPercentage()
+    + takePayment()
+    + getVirtualCard()
+}
+
+' For scheduling future expenses
+class ScheduleController {
+    + scheduleExpense()
+}
+
+' For logging server operation and saving
+' group history
+class Logger {
+    + logEntry()
+    + catchError()
+}
+
+' For checking that user has approved access for a 
+' certain request
+class AuthFilter {
+    + checkMatchingUser()
+    + checkInvited()
+    + checkMember()
+    + checkAdmin()
+}
+
+GroupController <|-- PersistentGroupController
+Database <-- AuthenticationController
+Database <-- AuthFilter
+Database <-- Logger
+Database <-- GroupController
+Database <-- ExpenseController
+Database <-- ScheduleController
+Database <-- UserController
+ResponseHelper <-- Router
+ResponseHelper <-- AuthenticationController
+ResponseHelper <-- UserController
+ResponseHelper <-- GroupController
+ResponseHelper <-- ExpenseController
+ResponseHelper <-- ScheduleController
+AuthFilter <-- Router
+UserController <-- AuthenticationController
+Logger <-- ResponseHelper
+Logger <-- Router
+GroupController <-- AuthFilter
+ScheduleController <-- AuthFilter
+ExpenseController <-- AuthFilter
+UserController <-- AuthFilter
+AuthenticationController <-- Router
+
+@enduml
