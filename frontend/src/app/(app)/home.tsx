@@ -34,26 +34,28 @@ export default function Home() {
         <Text style={styles.subtitle}>Some expenses need your attention</Text>
 
         {/* Expense Card */}
-        <LinearGradient
-          colors={['#FED7AA', '#FB923C', '#EA580C']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.expenseCard, styles.cardShadow]}
-        >
-          <View style={styles.expenseHeader}>
-            <Text style={[styles.expenseStatus, { color: '#7C2D12' }]}>Awaiting</Text>
-            <Text style={[styles.expenseTitle, { color: '#7C2D12' }]}>Acceptance</Text>
-          </View>
-          <Text style={[styles.expenseDescription, { color: '#7C2D12' }]}>"Company Dinner"</Text>
-          <Text style={[styles.expenseDate, { color: '#7C2D12' }]}>Mar-24 2025</Text>
+        <TouchableOpacity onPress={() => {}}>
+          <LinearGradient
+            colors={['#FED7AA', '#FB923C', '#EA580C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.expenseCard, styles.cardShadow]}
+          >
+            <View style={styles.expenseHeader}>
+              <Text style={[styles.expenseStatus, { color: '#7C2D12' }]}>Awaiting</Text>
+              <Text style={[styles.expenseTitle, { color: '#7C2D12' }]}>Acceptance</Text>
+            </View>
+            <Text style={[styles.expenseDescription, { color: '#7C2D12' }]}>"Company Dinner"</Text>
+            <Text style={[styles.expenseDate, { color: '#7C2D12' }]}>Mar-24 2025</Text>
 
-          {/* Pagination Dots */}
-          <View style={styles.paginationDots}>
-            <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
-            <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
-            <View style={[styles.activeDot, { backgroundColor: '#7C2D12', opacity: 0.7 }]} />
-          </View>
-        </LinearGradient>
+            {/* Pagination Dots */}
+            <View style={styles.paginationDots}>
+              <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
+              <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
+              <View style={[styles.activeDot, { backgroundColor: '#7C2D12', opacity: 0.7 }]} />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* Total Section */}
         <View style={[styles.totalSection, styles.cardShadow]}>

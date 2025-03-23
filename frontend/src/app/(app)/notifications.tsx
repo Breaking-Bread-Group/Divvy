@@ -16,10 +16,13 @@ export default function Notifications() {
             style={styles.profileImage}
           />
         </TouchableOpacity>
-        <View style={styles.notificationContainer}>
+        <TouchableOpacity 
+          style={styles.notificationContainer}
+          onPress={() => router.back()}
+        >
           <Feather name="bell" size={24} color="black" />
           <View style={styles.notificationDot} />
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
