@@ -1,25 +1,12 @@
 import React, { useState } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { Formik } from 'formik';
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-
-//Import icons
-import { Octicons, Ionicons } from '@expo/vector-icons'
-
-
-
-
-
-
-
-
-//Import colors
-import { Colors } from '../components/styles'
+import { Octicons, Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../components/styles';
 import {
     StyledContainer,
     InnerContainer,
-    PageLogo,
     PageTitle,
     SubTitle,
     StyledFormArea,
@@ -29,20 +16,16 @@ import {
     RightIcon,
     StyledButton,
     ButtonText,
-    MsgBox,
     Line,
     ExtraText,
     ExtraView,
     TextLink,
     TextLinkContent,
+} from '../../components/styles';
 
-} from '../components/styles';
-import { DarkTheme } from '@react-navigation/native';
-
-//Colors we need
 const { brand, darkLight } = Colors;
 
-const Signup = () => {
+export default function Login() {
     const [hidePassword, setHidePassword] = useState(true);
     const router = useRouter();
 
@@ -51,13 +34,13 @@ const Signup = () => {
             <StatusBar style="dark" />
             <InnerContainer>
                 <PageTitle>Divvy</PageTitle>
-                <SubTitle>Account Signup</SubTitle>
+                <SubTitle>Account Login</SubTitle>
 
                 <Formik
-                    initialValues={{ email: '', password: '', confirmPassword: '' }}
+                    initialValues={{ email: '', password: '' }}
                     onSubmit={(values) => {
                         console.log(values);
-                        router.push('/home');
+                        router.push('/(app)/home');
                     }}
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
@@ -85,27 +68,14 @@ const Signup = () => {
                                 setHidePassword={setHidePassword}
                             />
 
-                            <TextInput
-                                label="Confirm Password"
-                                placeholder="* * * * * * * *"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('confirmPassword')}
-                                onBlur={handleBlur('confirmPassword')}
-                                value={values.confirmPassword}
-                                secureTextEntry={hidePassword}
-                                isPassword={true}
-                                hidePassword={hidePassword}
-                                setHidePassword={setHidePassword}
-                            />
-
                             <StyledButton onPress={handleSubmit}>
-                                <ButtonText>Signup</ButtonText>
+                                <ButtonText>Login</ButtonText>
                             </StyledButton>
                             <Line />
                             <ExtraView>
-                                <ExtraText>Already have an account? </ExtraText>
-                                <TextLink onPress={() => router.push('/login')}>
-                                    <TextLinkContent>Login</TextLinkContent>
+                                <ExtraText>Don't have an account? </ExtraText>
+                                <TextLink onPress={() => router.push('/(auth)/signup')}>
+                                    <TextLinkContent>Signup</TextLinkContent>
                                 </TextLink>
                             </ExtraView>
                         </StyledFormArea>
@@ -131,6 +101,4 @@ const TextInput = ({ label, icon, isPassword, hidePassword, setHidePassword, ...
             )}
         </View>
     );
-}
-
-export default Signup;
+}; 

@@ -1,25 +1,12 @@
 import React, { useState } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { Formik } from 'formik';
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-
-//Import icons
-import { Octicons, Ionicons } from '@expo/vector-icons'
-
-
-
-
-
-
-
-
-//Import colors
-import { Colors } from '../components/styles'
+import { Octicons, Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../components/styles';
 import {
     StyledContainer,
     InnerContainer,
-    PageLogo,
     PageTitle,
     SubTitle,
     StyledFormArea,
@@ -29,20 +16,16 @@ import {
     RightIcon,
     StyledButton,
     ButtonText,
-    MsgBox,
     Line,
     ExtraText,
     ExtraView,
     TextLink,
     TextLinkContent,
+} from '../../components/styles';
 
-} from '../components/styles';
-import { DarkTheme } from '@react-navigation/native';
-
-//Colors we need
 const { brand, darkLight } = Colors;
 
-const Signup = () => {
+export default function Signup() {
     const [hidePassword, setHidePassword] = useState(true);
     const router = useRouter();
 
@@ -57,7 +40,7 @@ const Signup = () => {
                     initialValues={{ email: '', password: '', confirmPassword: '' }}
                     onSubmit={(values) => {
                         console.log(values);
-                        router.push('/home');
+                        router.push('/(app)/home');
                     }}
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
@@ -104,7 +87,7 @@ const Signup = () => {
                             <Line />
                             <ExtraView>
                                 <ExtraText>Already have an account? </ExtraText>
-                                <TextLink onPress={() => router.push('/login')}>
+                                <TextLink onPress={() => router.push('/(auth)/login')}>
                                     <TextLinkContent>Login</TextLinkContent>
                                 </TextLink>
                             </ExtraView>
@@ -131,6 +114,4 @@ const TextInput = ({ label, icon, isPassword, hidePassword, setHidePassword, ...
             )}
         </View>
     );
-}
-
-export default Signup;
+}; 

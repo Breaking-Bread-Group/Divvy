@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { Formik } from 'formik';
-import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 //Import icons
 import { Octicons, Ionicons } from '@expo/vector-icons'
@@ -36,69 +36,78 @@ const { brand, darkLight } = Colors;
 
 const Login = () => {
     const [hidePassword, setHidePassword] = useState(true);
+    const router = useRouter();
+
     return (
-        <StyledContainer>
-            <StatusBar style="dark" />
-            <InnerContainer>
-                <PageLogo resizeMode="cover" source={require('../assets/images/flowers.png')} />
-                <PageTitle>My Flowers</PageTitle>
-                <SubTitle>Account Login</SubTitle>
+        <View style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'space-around',
+        }}>
+            <StyledContainer>
+                <StatusBar style="dark" />
+                <InnerContainer>
+                    <PageLogo resizeMode="cover" source={require('../assets/images/flowers.png')} />
+                    <PageTitle>My Flowers</PageTitle>
+                    <SubTitle>Account Login</SubTitle>
 
-                <Formik initialValues={{ email: '', password: '' }}
-                    onSubmit={(values) => {
-                        console.log(values);
-                    }}>
+                    <Formik initialValues={{ email: '', password: '' }}
+                        onSubmit={(values) => {
+                            console.log(values);
+                            router.push('/home');
+                        }}>
 
-                    {({ handleChange, handleBlur, handleSubmit, values }) => (
-                        <StyledFormArea>
-                            <MyTextInput
-                                label="Email Address"
-                                icon="mail"
-                                placeholder="myemailaddress@gmail.com"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('emailAddress')}
-                                onBlur={handleBlur('emailAddress')}
-                                value={values.emailAddress}
-                                keyboardType="email-address" />
+                        {({ handleChange, handleBlur, handleSubmit, values }) => (
+                            <StyledFormArea>
+                                <MyTextInput
+                                    label="Email Address"
+                                    icon="mail"
+                                    placeholder="myemailaddress@gmail.com"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('email')}
+                                    onBlur={handleBlur('email')}
+                                    value={values.email}
+                                    keyboardType="email-address" />
 
-                            <MyTextInput
-                                label="Password"
-                                icon="lock"
-                                placeholder="* * * * * * "
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('password')}
-                                onBlur={handleBlur('password')}
-                                value={values.password}
-                                keyboardType="email-address"
-                                secureTextEntry={hidePassword}
-                                isPassword={true}
-                                hidePassword={hidePassword}
-                                setHidePassword={setHidePassword} />
+                                <MyTextInput
+                                    label="Password"
+                                    icon="lock"
+                                    placeholder="* * * * * * "
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('password')}
+                                    onBlur={handleBlur('password')}
+                                    value={values.password}
+                                    keyboardType="email-address"
+                                    secureTextEntry={hidePassword}
+                                    isPassword={true}
+                                    hidePassword={hidePassword}
+                                    setHidePassword={setHidePassword} />
 
-                            <MsgBox>...</MsgBox>
-                            <StyledButton onPress={handleSubmit}>
-                                <ButtonText>
-                                    Login
-                                </ButtonText>
-                            </StyledButton>
+                                <MsgBox>...</MsgBox>
+                                <StyledButton onPress={handleSubmit}>
+                                    <ButtonText>
+                                        Login
+                                    </ButtonText>
+                                </StyledButton>
 
-                            <Line />
-                            <ExtraView>
-                                
-                                <ExtraText>Don't have an account already?</ExtraText>
-                                <TextLink>
-                                    <TextLinkContent>Signup</TextLinkContent>
-                                </TextLink>
-                            </ExtraView>
-                        </StyledFormArea>
+                                <Line />
+                                <ExtraView>
+                                    
+                                    <ExtraText>Don't have an account already?</ExtraText>
+                                    <TextLink onPress={() => router.push('/signup')}>
+                                        <TextLinkContent>Signup</TextLinkContent>
+                                    </TextLink>
+                                </ExtraView>
+                            </StyledFormArea>
 
-                    )}
+                        )}
 
 
-                </Formik>
+                    </Formik>
 
-            </InnerContainer>
-        </StyledContainer>
+                </InnerContainer>
+            </StyledContainer>
+        </View>
     );
 }
 
