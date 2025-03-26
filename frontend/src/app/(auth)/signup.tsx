@@ -1,3 +1,4 @@
+import axios from 'axios'; // Install axios with `npm install axios`
 import React, { useState } from 'react';
 import { StatusBar, View } from 'react-native';
 import { Formik } from 'formik';
@@ -28,7 +29,22 @@ const { brand, darkLight } = Colors;
 export default function Signup() {
     const [hidePassword, setHidePassword] = useState(true);
     const router = useRouter();
-
+    const handleSignup = async (values) => {
+        try {
+            const response = await axios.post('http://localhost:3000/signup', {
+                email: values.email,
+                password: values.password,
+                first_name: "John",
+                last_name: "Doe",
+                phone: "(555) 123-4567",
+            });
+    
+            alert(response.data.message);
+            router.push('/(app)/home');  // Redirect to the home page
+        } catch (error) {
+            alert('Signup failed: ' + (error.response?.data?.message || error.message));
+        }
+    };
     return (
         <StyledContainer>
             <StatusBar style="dark" />
@@ -37,11 +53,8 @@ export default function Signup() {
                 <SubTitle>Account Signup</SubTitle>
 
                 <Formik
-                    initialValues={{ email: '', password: '', confirmPassword: '' }}
-                    onSubmit={(values) => {
-                        console.log(values);
-                        router.push('/(app)/home');
-                    }}
+                 initialValues={{ email: '', password: '', confirmPassword: '' }}
+                 onSubmit={handleSignup}  // Use the external handleSignup function
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
                         <StyledFormArea>
@@ -115,3 +128,4 @@ const TextInput = ({ label, icon, isPassword, hidePassword, setHidePassword, ...
         </View>
     );
 }; 
+
