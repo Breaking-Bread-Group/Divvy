@@ -1,0 +1,35 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Enabled",
+                "ssl": {
+                    "cert": "/Users/emperor/Desktop/Divvy/backend/certs/cert.pem",
+                    "key": "/Users/emperor/Desktop/Divvy/backend/certs/key.pem"
+                }
+            },
+            "previewLimit": 50,
+            "server": "https://localhost",
+            "driver": "MySQL",
+            "name": "Divvy",
+            "database": "Divvy",
+            "username": "root",
+            "connectString": "https://localhost:443"
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 80,
+            "driver": "MySQL",
+            "name": "div",
+            "database": "divvy",
+            "username": "root",
+            "askForPassword": true
+        }
+    ]
+}

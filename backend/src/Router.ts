@@ -11,12 +11,12 @@ import { UserController } from "./UserController";
 
 /**
  * @class Router
- * 
+ *
  * Very important class where all incoming communication pass through.
  * The router will take incoming http requests and determine the appropriate controller class and method to send them to.
  * For organization purposes, please do not implement the desired behavior on this script, this is only meant to route them.
  * Implement the desired behavior on a separate controller class.
- * 
+ *
  */
 export class Router {
     app: express.Application;
@@ -28,7 +28,7 @@ export class Router {
      * Constructs class, placing references to important running classes within it
      * Also does everything else because express is just like that I guess
      * All routing and setup is also done in this method
-     * 
+     *
      * @param logger - Reference to Logger for ability to quickly log responses. Though router will also pass this reference on to instanced classes of its own.
      * @param db - Reference to Database class for ability to interface with database. Used for session storage, though it will also be passed to instanced classes.
      * @param stripe_key - Secret Stripe Key needed to properly instance Stripe object to interface with Stripe services. It is a string to be provided by ServerSettings.json
@@ -84,7 +84,7 @@ export class Router {
     /**
      * Small contained method for the ping request. This is the only exception to the 'no implementation in router' rule.
      * This will simply test that connection is working by responding with some user data carried in the request.
-     * 
+     *
      * @param req - Express request object
      * @param res - Express response object
      */

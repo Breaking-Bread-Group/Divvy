@@ -1,10 +1,10 @@
 /**
  * Starting file for the program
- * 
+ *
  * Traditionally, the programmers' names go here:
- * 
+ *
  * @author Matthew Martinez, Abdul-Malik Mohammed, Sommer Hope, Minh Nguyen, Tyus Wyche
- * 
+ *
  */
 
 import fs from "fs";
