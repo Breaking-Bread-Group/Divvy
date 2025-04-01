@@ -2,6 +2,30 @@
 
 Divvy is a mobile application designed to simplify group expense management. It tackles the common challenge of splitting bills fairly—whether among roommates, friends, couples, or temporary groups—by tracking payments and debts, and automating expense calculations.
 
+## Deploy Backend
+
+1. Install dependencies
+
+  ```bash
+  cd backend && npm install
+  ```
+
+2. Generate certs
+
+  ```bash
+  sh ssl.sh
+  ```
+
+3. Create ServerSettings.json
+
+  ```bash
+  cp ServerSettings.json.template ServerSettings.json
+  ```
+
+4. Fill in the blank values of ServerSettings.json with appropriate settings. They are sensitive information and must not be uploaded outside of the machine.
+
+5. Create the database by running SetupServer.sql in your mysql interface of choice
+
 ## Deploy Test Server
 
 1. Install dependencies
