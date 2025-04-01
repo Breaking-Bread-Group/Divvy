@@ -26,6 +26,13 @@ Divvy is a mobile application designed to simplify group expense management. It 
 
 5. Create the database by running SetupServer.sql in your mysql interface of choice
 
+- Commands to build or run it:
+  ```
+  npm run build              - Build the server, but do not run when finished
+  npm run start / npm start  - Run the server, but do not rebuild (will use existing build, make sure it has already been built)
+  npm run full               - Build and Run the server when completed
+  ```
+
 ## Deploy Test Server
 
 1. Install dependencies
