@@ -1,6 +1,7 @@
 import axios from 'axios'; // Install axios with `npm install axios`
 import React, { useState } from 'react';
 import { StatusBar, View } from 'react-native';
+import { ScrollView, Text, StyleSheet } from 'react-native';
 import { Formik } from 'formik';
 import { useRouter } from 'expo-router';
 import { Octicons, Ionicons } from '@expo/vector-icons';
@@ -46,6 +47,7 @@ export default function Signup() {
         }
     };
     return (
+        <ScrollView>
         <StyledContainer>
             <StatusBar style="dark" />
             <InnerContainer>
@@ -53,11 +55,34 @@ export default function Signup() {
                 <SubTitle>Account Signup</SubTitle>
 
                 <Formik
-                 initialValues={{ email: '', password: '', confirmPassword: '' }}
+                 initialValues={{first_name: '', last_name: '', email: '', phone: '', password: '', confirmPassword: '' }}
                  onSubmit={handleSignup}  // Use the external handleSignup function
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
                         <StyledFormArea>
+
+                            <TextInput
+                                label="First Name"
+                                placeholder="First Name"
+                                placeholderTextColor={darkLight}
+                                onChangeText={handleChange('first_name')}
+                                onBlur={handleBlur('first_name')}
+                                value={values.first_name}
+                                
+                            />
+
+                            <TextInput
+                                label="Last Name"
+                                placeholder="Last Name"
+                                placeholderTextColor={darkLight}
+                                onChangeText={handleChange('last_name')}
+                                onBlur={handleBlur('last_name')}
+                                value={values.last_name}
+                                
+                            />
+
+                    
+
                             <TextInput
                                 label="Email Address"
                                 placeholder="andy@gmail.com"
@@ -67,6 +92,19 @@ export default function Signup() {
                                 value={values.email}
                                 keyboardType="email-address"
                             />
+
+                            <TextInput      
+                                label="Phone"
+                                placeholder="Phone"
+                                placeholderTextColor={darkLight}
+                                onChangeText={handleChange('phone')}
+                                onBlur={handleBlur('phone')}
+                                value={values.phone}
+                                keyboardType = "phone-pad"
+                                
+                            />
+
+                           
 
                             <TextInput
                                 label="Password"
@@ -109,6 +147,7 @@ export default function Signup() {
                 </Formik>
             </InnerContainer>
         </StyledContainer>
+        </ScrollView>
     );
 }
 
