@@ -60,6 +60,7 @@ export default function Signup() {
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
                         <StyledFormArea>
+                      
 
                             <TextInput
                                 label="First Name"
@@ -81,8 +82,6 @@ export default function Signup() {
                                 
                             />
 
-                    
-
                             <TextInput
                                 label="Email Address"
                                 placeholder="andy@gmail.com"
@@ -101,8 +100,10 @@ export default function Signup() {
                                 onBlur={handleBlur('phone')}
                                 value={values.phone}
                                 keyboardType = "phone-pad"
-                                
                             />
+
+                            
+                            
 
                            
 
