@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
@@ -9,6 +10,7 @@ export default function Home() {
   const router = useRouter();
 
   return (
+    <ScrollView>
     <BackgroundGradient>
       <SafeAreaView style={styles.container}>
         {/* Profile and Bell */}
@@ -73,7 +75,7 @@ export default function Home() {
           <View style={styles.actionButtons}>
             <TouchableOpacity 
               style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/home')}
+              onPress={() => router.push('/(app)/create-group')}
             >
               <LinearGradient
                 colors={['#FFE8D2', '#FDB78F']}
@@ -137,7 +139,7 @@ export default function Home() {
                   Manage{'\n'}Expenses
                 </Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </TouchableOpacity>       
           </View>
 
           {/* Divvy Text */}
@@ -145,6 +147,7 @@ export default function Home() {
         </View>
       </SafeAreaView>
     </BackgroundGradient>
+    </ScrollView>
   );
 }
 

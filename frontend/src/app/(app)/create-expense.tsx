@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, Image, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
@@ -8,6 +8,7 @@ export default function CreateExpense() {
   const router = useRouter();
 
   return (
+    <ScrollView>
     <BackgroundGradient>
       <SafeAreaView style={styles.container}>
         {/* Header Icons */}
@@ -45,6 +46,22 @@ export default function CreateExpense() {
             </View>
           </View>
 
+          {/* Amount Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.label}>Amount</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.currencySymbol}>$</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+              />
+              <TouchableOpacity style={styles.editButton}>
+                <Feather name="edit-2" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Associates Input */}
           <View style={styles.inputSection}>
             <Text style={styles.label}>Associates</Text>
@@ -69,9 +86,51 @@ export default function CreateExpense() {
           >
             <Text style={styles.groupText}>Company Dinner Party (Group)</Text>
           </TouchableOpacity>
+
+          {/* Split Options */}
+          <View style={styles.splitSection}>
+            <Text style={styles.label}>Split Options</Text>
+            <View style={styles.splitButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.splitButton, styles.cardShadow, styles.activeButton]}
+                onPress={() => console.log('Split evenly')}
+              >
+                <Feather name="divide" size={20} color="#FFFFFF" />
+                <Text style={[styles.splitButtonText, styles.activeButtonText]}>Split Evenly</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.splitButton, styles.cardShadow]}
+                onPress={() => console.log('Split by percentage')}
+              >
+                <Feather name="percent" size={20} color="#1F2937" />
+                <Text style={styles.splitButtonText}>By Percentage</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.splitButton, styles.cardShadow]}
+                onPress={() => console.log('Split by amount')}
+              >
+                <Text style={styles.dollarSymbol}>$</Text>
+                <Text style={styles.splitButtonText}>By Amount</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Done Button */}
+          <TouchableOpacity 
+            style={styles.doneButton}
+            onPress={() => {
+              console.log('Done pressed');
+              router.back();
+            }}
+          >
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </BackgroundGradient>
+    </ScrollView>
   );
 }
 
@@ -122,6 +181,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
+    paddingBottom: 24,
   },
   title: {
     fontSize: 32,
@@ -149,6 +209,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
   },
+  currencySymbol: {
+    fontSize: 18,
+    color: '#1F2937',
+    marginRight: 4,
+  },
   editButton: {
     padding: 8,
   },
@@ -160,6 +225,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
+    marginBottom: 24,
   },
   cardShadow: {
     shadowColor: '#EA580C',
@@ -172,4 +238,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
   },
-}); 
+  splitSection: {
+    marginBottom: 32,
+  },
+  splitButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  splitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 12,
+    width: '31%',
+    height: 48,
+  },
+  activeButton: {
+    backgroundColor: '#EA580C',
+  },
+  activeButtonText: {
+    color: '#FFFFFF',
+  },
+  splitButtonText: {
+    fontSize: 14,
+    color: '#1F2937',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  dollarSymbol: {
+    fontSize: 18,
+    color: '#1F2937',
+    marginRight: 2,
+  },
+  doneButton: {
+    backgroundColor: '#EA580C',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 'auto',
+  },
+  doneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
