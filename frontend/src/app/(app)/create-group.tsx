@@ -4,32 +4,51 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
 
-export default function CreateExpense() {
+// Mock users database
+const mockUsers = [
+  { id: '101', name: 'John Smith', email: 'john@example.com' },
+  { id: '102', name: 'Sarah Johnson', email: 'sarah@example.com' },
+  { id: '103', name: 'Mike Williams', email: 'mike@example.com' },
+  { id: '104', name: 'Emma Davis', email: 'emma@example.com' },
+  { id: '105', name: 'David Brown', email: 'david@example.com' },
+  { id: '106', name: 'Jessica Wilson', email: 'jessica@example.com' },
+  { id: '107', name: 'Alex Taylor', email: 'alex@example.com' },
+  { id: '108', name: 'Karen Moore', email: 'karen@example.com' },
+  { id: '109', name: 'Tom Anderson', email: 'tom@example.com' },
+  { id: '110', name: 'Lisa Thomas', email: 'lisa@example.com' },
+];
+
+export default function CreateGroup() {
   const router = useRouter();
   const [groupTitle, setGroupTitle] = useState('My Group');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [groups, setGroups] = useState([
-    { id: '1', title: 'Vacation Trip', members: ['John', 'Sarah', 'Mike'] },
-    { id: '2', title: 'Office Lunch', members: ['Emma', 'David'] },
+    { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
+    { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
   ]);
 
-  // Mock search results - in a real app, this would come from an API
+  // Search results state
   const [searchResults, setSearchResults] = useState([]);
 
   const handleSearch = (text) => {
     setSearchTerm(text);
-    // Mock search functionality - in a real app, this would be an API call
+    
     if (text.trim() === '') {
       setSearchResults([]);
     } else {
-      // Mock some search results based on input
-      const mockResults = [
-        { id: '1', name: `${text} Smith` },
-        { id: '2', name: `${text} Johnson` },
-        { id: '3', name: `${text} Williams` }
-      ];
-      setSearchResults(mockResults);
+      // Filter mockUsers based on search term (case insensitive)
+      const filteredUsers = mockUsers.filter(user => 
+        user.name.toLowerCase().includes(text.toLowerCase()) || 
+        user.email.toLowerCase().includes(text.toLowerCase())
+      );
+      
+      // Filter out users who are already selected
+      const availableUsers = filteredUsers.filter(
+        user => !selectedMembers.some(member => member.id === user.id)
+      );
+      
+      setSearchResults(availableUsers);
     }
   };
 
@@ -45,7 +64,8 @@ export default function CreateExpense() {
       // Notify user the member is already in the group
       Alert.alert('Already Added', `${member.name} is already in the group`);
     }
-    // We don't clear the search term or results here so users can add multiple people
+    // Remove the added user from search results but keep other results visible
+    setSearchResults(searchResults.filter(result => result.id !== member.id));
   };
 
   const removeMember = (memberId) => {
@@ -147,7 +167,8 @@ export default function CreateExpense() {
                   style={styles.input}
                   value={searchTerm}
                   onChangeText={handleSearch}
-                  placeholder="Search for associates"
+                  placeholder="Search for associates by name"
+                  autoCapitalize="none"
                 />
                 <TouchableOpacity 
                   style={styles.searchButton}
@@ -164,8 +185,14 @@ export default function CreateExpense() {
                     data={searchResults}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
-                      <View style={styles.searchResultItem}>
-                        <Text style={styles.searchResultText}>{item.name}</Text>
+                      <TouchableOpacity 
+                        style={styles.searchResultItem}
+                        onPress={() => addMember(item)}
+                      >
+                        <View>
+                          <Text style={styles.searchResultText}>{item.name}</Text>
+                          <Text style={styles.searchResultEmail}>{item.email}</Text>
+                        </View>
                         <TouchableOpacity 
                           style={styles.addMemberButton}
                           onPress={() => addMember(item)}
@@ -173,7 +200,7 @@ export default function CreateExpense() {
                           <Feather name="user-plus" size={18} color="#10B981" />
                           <Text style={styles.addButtonText}>Add</Text>
                         </TouchableOpacity>
-                      </View>
+                      </TouchableOpacity>
                     )}
                     style={styles.searchResultsList}
                   />
@@ -207,23 +234,24 @@ export default function CreateExpense() {
                   setSearchResults([]);
                 }}
               >
-                <Text style={styles.clearSearchButtonText}>Clear Search & Add More Members</Text>
+                <Text style={styles.clearSearchButtonText}>Clear Search</Text>
               </TouchableOpacity>
             )}
 
-            {/* Add Member Button */}
+            {/* Show All Members Button */}
             <TouchableOpacity 
               style={styles.addMemberMainButton}
               onPress={() => {
-                if (searchTerm.trim() === '') {
-                  Alert.alert('Enter Name', 'Please enter a name to search for members');
-                } else {
-                  handleSearch(searchTerm);
-                }
+                // Display all users not already selected
+                const availableUsers = mockUsers.filter(
+                  user => !selectedMembers.some(member => member.id === user.id)
+                );
+                setSearchResults(availableUsers);
+                setSearchTerm('');
               }}
             >
-              <Feather name="user-plus" size={20} color="white" />
-              <Text style={styles.addMemberMainButtonText}>Add Member</Text>
+              <Feather name="users" size={20} color="white" />
+              <Text style={styles.addMemberMainButtonText}>Show All Associates</Text>
             </TouchableOpacity>
 
             {/* Save Group Button */}
@@ -313,6 +341,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
+    paddingBottom: 24,
   },
   title: {
     fontSize: 32,
@@ -370,7 +399,13 @@ const styles = StyleSheet.create({
   },
   searchResultText: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#1F2937',
+  },
+  searchResultEmail: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   addMemberButton: {
     flexDirection: 'row',
@@ -421,7 +456,7 @@ const styles = StyleSheet.create({
     color: '#4F46E5', // Indigo-600
   },
   addMemberMainButton: {
-    backgroundColor: '#EA580C', // Green-600
+    backgroundColor: '#EA580C', // Orange-600
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -436,7 +471,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   saveButton: {
-    backgroundColor: '#EA580C', // Cyan-600
+    backgroundColor: '#EA580C', // Orange-600
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

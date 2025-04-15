@@ -3,9 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, Imag
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
+import { Formik } from 'formik';
 
 export default function CreateExpense() {
   const router = useRouter();
+
+  //Put the handle function here: "handleExpense"
 
   return (
     <ScrollView>
@@ -30,6 +33,8 @@ export default function CreateExpense() {
 
         <View style={styles.content}>
           <Text style={styles.title}>Create Expense</Text>
+
+          
 
           {/* Title Input */}
           <View style={styles.inputSection}>
@@ -92,11 +97,11 @@ export default function CreateExpense() {
             <Text style={styles.label}>Split Options</Text>
             <View style={styles.splitButtonsContainer}>
               <TouchableOpacity 
-                style={[styles.splitButton, styles.cardShadow, styles.activeButton]}
+                style={[styles.splitButton, styles.cardShadow]}
                 onPress={() => console.log('Split evenly')}
               >
-                <Feather name="divide" size={20} color="#FFFFFF" />
-                <Text style={[styles.splitButtonText, styles.activeButtonText]}>Split Evenly</Text>
+                <Feather name="divide" size={20} color="#1F2937" />
+                <Text style={[styles.splitButtonText]}>Split Evenly</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 

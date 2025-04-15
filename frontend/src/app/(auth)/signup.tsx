@@ -46,6 +46,10 @@ export default function Signup() {
             alert('Signup failed: ' + (error.response?.data?.message || error.message));
         }
     };
+
+
+
+    
     return (
         <ScrollView>
         <StyledContainer>
