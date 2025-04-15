@@ -1,54 +1,168 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, FlatList, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, FlatList, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
 
-// Mock users database
-const mockUsers = [
-  { id: '101', name: 'John Smith', email: 'john@example.com' },
-  { id: '102', name: 'Sarah Johnson', email: 'sarah@example.com' },
-  { id: '103', name: 'Mike Williams', email: 'mike@example.com' },
-  { id: '104', name: 'Emma Davis', email: 'emma@example.com' },
-  { id: '105', name: 'David Brown', email: 'david@example.com' },
-  { id: '106', name: 'Jessica Wilson', email: 'jessica@example.com' },
-  { id: '107', name: 'Alex Taylor', email: 'alex@example.com' },
-  { id: '108', name: 'Karen Moore', email: 'karen@example.com' },
-  { id: '109', name: 'Tom Anderson', email: 'tom@example.com' },
-  { id: '110', name: 'Lisa Thomas', email: 'lisa@example.com' },
-];
+// API base URL - replace with your actual API URL
+const API_BASE_URL = 'http://localhost:8080';
+
+// Storage key for groups
+const STORAGE_KEY = '@divvy_groups';
 
 export default function CreateGroup() {
   const router = useRouter();
   const [groupTitle, setGroupTitle] = useState('My Group');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMembers, setSelectedMembers] = useState([]);
-  const [groups, setGroups] = useState([
-    { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
-    { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
-  ]);
+  const [groups, setGroups] = useState([]);
 
   // Search results state
   const [searchResults, setSearchResults] = useState([]);
+  
+  // Loading states
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSearch = (text) => {
-    setSearchTerm(text);
-    
-    if (text.trim() === '') {
+  // Load saved groups on initial render
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  // Function to load groups from localStorage
+  const loadGroups = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Check if we're in a browser environment (where localStorage is available)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const storedGroups = window.localStorage.getItem(STORAGE_KEY);
+        
+        if (storedGroups) {
+          setGroups(JSON.parse(storedGroups));
+        } else {
+          // Set default groups only if no saved groups exist
+          const defaultGroups = [
+            { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
+            { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
+          ];
+          setGroups(defaultGroups);
+          
+          // Save default groups to localStorage
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultGroups));
+        }
+      } else {
+        // Fallback for non-browser environments
+        console.warn('localStorage not available in this environment');
+        // Set default groups
+        const defaultGroups = [
+          { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
+          { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
+        ];
+        setGroups(defaultGroups);
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error);
+      Alert.alert('Error', 'Failed to load saved groups');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to save groups to localStorage
+  const storeGroups = async (updatedGroups) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGroups));
+        console.log('Groups saved to localStorage:', updatedGroups);
+      } else {
+        console.warn('localStorage not available, groups not saved');
+      }
+    } catch (error) {
+      console.error('Error saving groups:', error);
+      Alert.alert('Error', 'Failed to save groups');
+    }
+  };
+
+  // Function to search users via API
+  const searchUsers = async (term) => {
+    if (!term.trim()) {
       setSearchResults([]);
-    } else {
-      // Filter mockUsers based on search term (case insensitive)
-      const filteredUsers = mockUsers.filter(user => 
-        user.name.toLowerCase().includes(text.toLowerCase()) || 
-        user.email.toLowerCase().includes(text.toLowerCase())
-      );
+      return;
+    }
+    
+    setIsSearching(true);
+    setSearchError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/search?term=${encodeURIComponent(term)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
       
       // Filter out users who are already selected
-      const availableUsers = filteredUsers.filter(
-        user => !selectedMembers.some(member => member.id === user.id)
+      const availableUsers = data.filter(
+        user => !selectedMembers.some(member => member.id === user.id.toString())
       );
       
       setSearchResults(availableUsers);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchError('Failed to search users. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (searchTerm) {
+        searchUsers(searchTerm);
+      }
+    }, 300); // 300ms delay
+    
+    return () => clearTimeout(delaySearch);
+  }, [searchTerm]);
+  
+  // Handle search input change
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    
+    if (!text.trim()) {
+      setSearchResults([]);
+    }
+  };
+
+  // Function to get all available users
+  const getAllUsers = async () => {
+    setIsSearching(true);
+    setSearchError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      
+      // Filter out users who are already selected
+      const availableUsers = data.filter(
+        user => !selectedMembers.some(member => member.id === user.id.toString())
+      );
+      
+      setSearchResults(availableUsers);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      setSearchError('Failed to fetch users. Please try again.');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -72,7 +186,7 @@ export default function CreateGroup() {
     setSelectedMembers(selectedMembers.filter(member => member.id !== memberId));
   };
 
-  const saveGroup = () => {
+  const saveGroup = async () => {
     if (groupTitle.trim() === '') {
       Alert.alert('Error', 'Please enter a group title');
       return;
@@ -91,7 +205,12 @@ export default function CreateGroup() {
     };
 
     // Add new group to the list
-    setGroups([...groups, newGroup]);
+    const updatedGroups = [...groups, newGroup];
+    setGroups(updatedGroups);
+    
+    // Save to localStorage
+    await storeGroups(updatedGroups);
+    console.log('Group saved:', newGroup);
     
     // Reset form
     setGroupTitle('My Group');
@@ -102,21 +221,22 @@ export default function CreateGroup() {
     Alert.alert('Success', 'Group created successfully');
   };
 
-  const deleteGroup = (groupId) => {
-    Alert.alert(
-      'Delete Group',
-      'Are you sure you want to delete this group?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: () => {
-            setGroups(groups.filter(group => group.id !== groupId));
-          }
-        }
-      ]
-    );
+  // Enhanced delete group function with immediate visual feedback
+  const handleDeleteGroup = (groupId) => {
+    console.log('Delete button clicked for group ID:', groupId);
+    
+    // First, immediately remove the group from the UI
+    const updatedGroups = groups.filter(group => group.id !== groupId);
+    setGroups(updatedGroups);
+    
+    // Then persist the change to localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGroups));
+      console.log('Groups updated in localStorage after deletion');
+    }
+    
+    // Optional: Show a brief success message
+    Alert.alert('Group Deleted', 'The group has been removed');
   };
 
   return (
@@ -170,20 +290,29 @@ export default function CreateGroup() {
                   placeholder="Search for associates by name"
                   autoCapitalize="none"
                 />
-                <TouchableOpacity 
-                  style={styles.searchButton}
-                  onPress={() => handleSearch(searchTerm)}
-                >
-                  <Feather name="search" size={20} color="#6B7280" />
-                </TouchableOpacity>
+                {isSearching ? (
+                  <ActivityIndicator size="small" color="#EA580C" style={styles.searchButton} />
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.searchButton}
+                    onPress={() => searchUsers(searchTerm)}
+                  >
+                    <Feather name="search" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                )}
               </View>
+              
+              {/* Search Error */}
+              {searchError && (
+                <Text style={styles.errorText}>{searchError}</Text>
+              )}
               
               {/* Search Results */}
               {searchResults.length > 0 && (
                 <View style={styles.searchResultsContainer}>
                   <FlatList
                     data={searchResults}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                       <TouchableOpacity 
                         style={styles.searchResultItem}
@@ -241,17 +370,17 @@ export default function CreateGroup() {
             {/* Show All Members Button */}
             <TouchableOpacity 
               style={styles.addMemberMainButton}
-              onPress={() => {
-                // Display all users not already selected
-                const availableUsers = mockUsers.filter(
-                  user => !selectedMembers.some(member => member.id === user.id)
-                );
-                setSearchResults(availableUsers);
-                setSearchTerm('');
-              }}
+              onPress={getAllUsers}
+              disabled={isSearching}
             >
-              <Feather name="users" size={20} color="white" />
-              <Text style={styles.addMemberMainButtonText}>Show All Associates</Text>
+              {isSearching && searchTerm === '' ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Feather name="users" size={20} color="white" />
+                  <Text style={styles.addMemberMainButtonText}>Show All Associates</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             {/* Save Group Button */}
@@ -262,30 +391,34 @@ export default function CreateGroup() {
               <Text style={styles.saveButtonText}>Save Group</Text>
             </TouchableOpacity>
 
-            {/* Delete Group Button */}
-            <TouchableOpacity 
-              style={styles.deleteButton}
-              onPress={() => Alert.alert('Delete Group', 'This will delete the current group being created')}
-            >
-              <Text style={styles.deleteButtonText}>Delete Group</Text>
-            </TouchableOpacity>
-
             {/* Existing Groups */}
             <View style={styles.existingGroupsSection}>
               <Text style={styles.sectionTitle}>Existing Groups</Text>
-              {groups.map((group) => (
-                <View key={group.id} style={[styles.groupContainer, styles.cardShadow]}>
-                  <View style={styles.groupHeaderContainer}>
-                    <Text style={styles.groupTitle}>{group.title}</Text>
-                    <TouchableOpacity onPress={() => deleteGroup(group.id)}>
-                      <Feather name="trash-2" size={20} color="#EF4444" />
-                    </TouchableOpacity>
+              {isLoading ? (
+                <ActivityIndicator size="large" color="#EA580C" />
+              ) : groups.length > 0 ? (
+                groups.map((group) => (
+                  <View key={group.id} style={[styles.groupContainer, styles.cardShadow]}>
+                    <View style={styles.groupHeaderContainer}>
+                      <Text style={styles.groupTitle}>{group.title}</Text>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => {
+                          console.log('Delete button pressed for group:', group.title);
+                          handleDeleteGroup(group.id);
+                        }}
+                      >
+                        <Feather name="trash-2" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.groupMembersText}>
+                      {group.members.join(', ')}
+                    </Text>
                   </View>
-                  <Text style={styles.groupMembersText}>
-                    {group.members.join(', ')}
-                  </Text>
-                </View>
-              ))}
+                ))
+              ) : (
+                <Text style={styles.noGroupsText}>No groups created yet</Text>
+              )}
             </View>
           </View>
         </SafeAreaView>
@@ -374,6 +507,11 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     padding: 8,
+  },
+  errorText: {
+    color: '#EF4444',
+    marginTop: 4,
+    fontSize: 14,
   },
   searchResultsContainer: {
     marginTop: 8,
@@ -482,18 +620,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  deleteButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)', // Red with opacity
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#EF4444', // Red-500
-  },
   existingGroupsSection: {
     marginBottom: 24,
   },
@@ -502,6 +628,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     color: '#1F2937',
+  },
+  noGroupsText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 12,
   },
   groupContainer: {
     backgroundColor: '#FFF',
@@ -530,5 +663,10 @@ const styles = StyleSheet.create({
   groupMembersText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  deleteButton: {
+    padding: 10,  // Increased padding for larger touch target
+    backgroundColor: 'rgba(239, 68, 68, 0.1)', // Light red background
+    borderRadius: 8,
   },
 });
