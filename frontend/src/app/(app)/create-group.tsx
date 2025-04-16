@@ -3,19 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, Flat
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
+import { useAuth } from '../../context/AuthContext';
 
 // API base URL - replace with your actual API URL
 const API_BASE_URL = 'http://localhost:8080';
 
-// Storage key for groups
-const STORAGE_KEY = '@divvy_groups';
-
 export default function CreateGroup() {
   const router = useRouter();
+  const { user } = useAuth();
   const [groupTitle, setGroupTitle] = useState('My Group');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [currentGroupId, setCurrentGroupId] = useState(null);
+  const [showAddMembers, setShowAddMembers] = useState(false);
 
   // Search results state
   const [searchResults, setSearchResults] = useState([]);
@@ -25,63 +26,30 @@ export default function CreateGroup() {
   const [searchError, setSearchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved groups on initial render
+  // Load user's groups on initial render
   useEffect(() => {
     loadGroups();
   }, []);
 
-  // Function to load groups from localStorage
+  // Function to load groups from the backend
   const loadGroups = async () => {
     try {
       setIsLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/groups`, {
+        credentials: 'include',
+      });
       
-      // Check if we're in a browser environment (where localStorage is available)
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const storedGroups = window.localStorage.getItem(STORAGE_KEY);
-        
-        if (storedGroups) {
-          setGroups(JSON.parse(storedGroups));
-        } else {
-          // Set default groups only if no saved groups exist
-          const defaultGroups = [
-            { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
-            { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
-          ];
-          setGroups(defaultGroups);
-          
-          // Save default groups to localStorage
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultGroups));
-        }
-      } else {
-        // Fallback for non-browser environments
-        console.warn('localStorage not available in this environment');
-        // Set default groups
-        const defaultGroups = [
-          { id: '1', title: 'Vacation Trip', members: ['John Smith', 'Sarah Johnson', 'Mike Williams'] },
-          { id: '2', title: 'Office Lunch', members: ['Emma Davis', 'David Brown'] },
-        ];
-        setGroups(defaultGroups);
+      if (!response.ok) {
+        throw new Error('Failed to fetch groups');
       }
+      
+      const data = await response.json();
+      setGroups(data);
     } catch (error) {
       console.error('Error loading groups:', error);
-      Alert.alert('Error', 'Failed to load saved groups');
+      Alert.alert('Error', 'Failed to load groups');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Function to save groups to localStorage
-  const storeGroups = async (updatedGroups) => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGroups));
-        console.log('Groups saved to localStorage:', updatedGroups);
-      } else {
-        console.warn('localStorage not available, groups not saved');
-      }
-    } catch (error) {
-      console.error('Error saving groups:', error);
-      Alert.alert('Error', 'Failed to save groups');
     }
   };
 
@@ -96,7 +64,9 @@ export default function CreateGroup() {
     setSearchError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/search?term=${encodeURIComponent(term)}`);
+      const response = await fetch(`${API_BASE_URL}/api/users/search?term=${encodeURIComponent(term)}`, {
+        credentials: 'include',
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch users');
@@ -138,34 +108,6 @@ export default function CreateGroup() {
     }
   };
 
-  // Function to get all available users
-  const getAllUsers = async () => {
-    setIsSearching(true);
-    setSearchError(null);
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/users`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      
-      const data = await response.json();
-      
-      // Filter out users who are already selected
-      const availableUsers = data.filter(
-        user => !selectedMembers.some(member => member.id === user.id.toString())
-      );
-      
-      setSearchResults(availableUsers);
-    } catch (error) {
-      console.error('Error fetching all users:', error);
-      setSearchError('Failed to fetch users. Please try again.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   const addMember = (member) => {
     // Check if member is already added
     if (!selectedMembers.some(m => m.id === member.id)) {
@@ -197,46 +139,96 @@ export default function CreateGroup() {
       return;
     }
 
-    // Create new group
-    const newGroup = {
-      id: Date.now().toString(),
-      title: groupTitle,
-      members: selectedMembers.map(member => member.name)
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/groups`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: groupTitle,
+          memberEmails: selectedMembers.map(member => member.email),
+        }),
+      });
 
-    // Add new group to the list
-    const updatedGroups = [...groups, newGroup];
-    setGroups(updatedGroups);
-    
-    // Save to localStorage
-    await storeGroups(updatedGroups);
-    console.log('Group saved:', newGroup);
-    
-    // Reset form
-    setGroupTitle('My Group');
-    setSelectedMembers([]);
-    setSearchTerm('');
-    setSearchResults([]);
-    
-    Alert.alert('Success', 'Group created successfully');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create group');
+      }
+
+      // Reset form
+      setGroupTitle('My Group');
+      setSelectedMembers([]);
+      setSearchTerm('');
+      setSearchResults([]);
+      
+      // Reload groups
+      await loadGroups();
+      
+      Alert.alert('Success', 'Group created successfully');
+    } catch (error) {
+      console.error('Error creating group:', error);
+      Alert.alert('Error', error.message || 'Failed to create group. Please try again.');
+    }
   };
 
-  // Enhanced delete group function with immediate visual feedback
-  const handleDeleteGroup = (groupId) => {
-    console.log('Delete button clicked for group ID:', groupId);
-    
-    // First, immediately remove the group from the UI
-    const updatedGroups = groups.filter(group => group.id !== groupId);
-    setGroups(updatedGroups);
-    
-    // Then persist the change to localStorage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGroups));
-      console.log('Groups updated in localStorage after deletion');
+  const handleDeleteGroup = async (groupId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete group');
+      }
+
+      // Update local state
+      setGroups(groups.filter(group => group.id !== groupId));
+      Alert.alert('Success', 'Group deleted successfully');
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      Alert.alert('Error', 'Failed to delete group. Please try again.');
     }
-    
-    // Optional: Show a brief success message
-    Alert.alert('Group Deleted', 'The group has been removed');
+  };
+
+  const addMembersToGroup = async (groupId) => {
+    if (selectedMembers.length === 0) {
+      Alert.alert('Error', 'Please add at least one member');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          memberEmails: selectedMembers.map(member => member.email),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add members');
+      }
+
+      // Reset form
+      setSelectedMembers([]);
+      setSearchTerm('');
+      setSearchResults([]);
+      
+      // Reload groups
+      await loadGroups();
+      
+      Alert.alert('Success', 'Members added successfully');
+    } catch (error) {
+      console.error('Error adding members:', error);
+      Alert.alert('Error', error.message || 'Failed to add members. Please try again.');
+    }
   };
 
   return (
@@ -261,165 +253,257 @@ export default function CreateGroup() {
           </View>
 
           <View style={styles.content}>
-            <Text style={styles.title}>Create Group</Text>
+            <Text style={styles.title}>
+              {showAddMembers ? 'Add Members' : 'Create Group'}
+            </Text>
 
-            {/* Title Input */}
-            <View style={styles.inputSection}>
-              <Text style={styles.label}>Title</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={groupTitle}
-                  onChangeText={setGroupTitle}
-                  placeholder="Enter group title"
-                />
-                <TouchableOpacity style={styles.editButton}>
-                  <Feather name="edit-2" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-            </View>
+            {/* Add Members Modal */}
+            {showAddMembers && (
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Add Members to Group</Text>
+                    <TouchableOpacity 
+                      style={styles.closeButton}
+                      onPress={() => {
+                        setShowAddMembers(false);
+                        setCurrentGroupId(null);
+                        setSelectedMembers([]);
+                        setSearchTerm('');
+                        setSearchResults([]);
+                      }}
+                    >
+                      <Feather name="x" size={24} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
 
-            {/* Associates Input */}
-            <View style={styles.inputSection}>
-              <Text style={styles.label}>Associates</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={searchTerm}
-                  onChangeText={handleSearch}
-                  placeholder="Search for associates by name"
-                  autoCapitalize="none"
-                />
-                {isSearching ? (
-                  <ActivityIndicator size="small" color="#EA580C" style={styles.searchButton} />
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.searchButton}
-                    onPress={() => searchUsers(searchTerm)}
-                  >
-                    <Feather name="search" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              {/* Search Error */}
-              {searchError && (
-                <Text style={styles.errorText}>{searchError}</Text>
-              )}
-              
-              {/* Search Results */}
-              {searchResults.length > 0 && (
-                <View style={styles.searchResultsContainer}>
-                  <FlatList
-                    data={searchResults}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity 
-                        style={styles.searchResultItem}
-                        onPress={() => addMember(item)}
-                      >
-                        <View>
-                          <Text style={styles.searchResultText}>{item.name}</Text>
-                          <Text style={styles.searchResultEmail}>{item.email}</Text>
-                        </View>
+                  {/* Search Input */}
+                  <View style={styles.inputSection}>
+                    <Text style={styles.label}>Search Associates</Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.input}
+                        value={searchTerm}
+                        onChangeText={handleSearch}
+                        placeholder="Search for associates by name"
+                        autoCapitalize="none"
+                      />
+                      {isSearching ? (
+                        <ActivityIndicator size="small" color="#EA580C" style={styles.searchButton} />
+                      ) : (
                         <TouchableOpacity 
-                          style={styles.addMemberButton}
-                          onPress={() => addMember(item)}
+                          style={styles.searchButton}
+                          onPress={() => searchUsers(searchTerm)}
                         >
-                          <Feather name="user-plus" size={18} color="#10B981" />
-                          <Text style={styles.addButtonText}>Add</Text>
+                          <Feather name="search" size={20} color="#6B7280" />
                         </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Selected Members */}
+                  {selectedMembers.length > 0 && (
+                    <View style={styles.selectedMembersSection}>
+                      <Text style={styles.label}>Selected Members</Text>
+                      <View style={styles.selectedMembersContainer}>
+                        {selectedMembers.map((member) => (
+                          <View key={member.id} style={styles.memberChip}>
+                            <Text style={styles.memberChipText}>{member.name}</Text>
+                            <TouchableOpacity onPress={() => removeMember(member.id)}>
+                              <Feather name="x" size={16} color="#4B5563" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Add Members Button */}
+                  <TouchableOpacity 
+                    style={styles.saveButton}
+                    onPress={() => addMembersToGroup(currentGroupId)}
+                  >
+                    <Text style={styles.saveButtonText}>Add Members</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Rest of the content */}
+            {!showAddMembers && (
+              <>
+                {/* Title Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.label}>Title</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      value={groupTitle}
+                      onChangeText={setGroupTitle}
+                      placeholder="Enter group title"
+                    />
+                    <TouchableOpacity style={styles.editButton}>
+                      <Feather name="edit-2" size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Associates Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.label}>Associates</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      value={searchTerm}
+                      onChangeText={handleSearch}
+                      placeholder="Search for associates by name"
+                      autoCapitalize="none"
+                    />
+                    {isSearching ? (
+                      <ActivityIndicator size="small" color="#EA580C" style={styles.searchButton} />
+                    ) : (
+                      <TouchableOpacity 
+                        style={styles.searchButton}
+                        onPress={() => searchUsers(searchTerm)}
+                      >
+                        <Feather name="search" size={20} color="#6B7280" />
                       </TouchableOpacity>
                     )}
-                    style={styles.searchResultsList}
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Selected Members */}
-            {selectedMembers.length > 0 && (
-              <View style={styles.selectedMembersSection}>
-                <Text style={styles.label}>Selected Members</Text>
-                <View style={styles.selectedMembersContainer}>
-                  {selectedMembers.map((member) => (
-                    <View key={member.id} style={styles.memberChip}>
-                      <Text style={styles.memberChipText}>{member.name}</Text>
-                      <TouchableOpacity onPress={() => removeMember(member.id)}>
-                        <Feather name="x" size={16} color="#4B5563" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Button to clear search and add more members */}
-            {searchResults.length > 0 && (
-              <TouchableOpacity 
-                style={styles.clearSearchButton}
-                onPress={() => {
-                  setSearchTerm('');
-                  setSearchResults([]);
-                }}
-              >
-                <Text style={styles.clearSearchButtonText}>Clear Search</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Show All Members Button */}
-            <TouchableOpacity 
-              style={styles.addMemberMainButton}
-              onPress={getAllUsers}
-              disabled={isSearching}
-            >
-              {isSearching && searchTerm === '' ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <>
-                  <Feather name="users" size={20} color="white" />
-                  <Text style={styles.addMemberMainButtonText}>Show All Associates</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Save Group Button */}
-            <TouchableOpacity 
-              style={styles.saveButton}
-              onPress={saveGroup}
-            >
-              <Text style={styles.saveButtonText}>Save Group</Text>
-            </TouchableOpacity>
-
-            {/* Existing Groups */}
-            <View style={styles.existingGroupsSection}>
-              <Text style={styles.sectionTitle}>Existing Groups</Text>
-              {isLoading ? (
-                <ActivityIndicator size="large" color="#EA580C" />
-              ) : groups.length > 0 ? (
-                groups.map((group) => (
-                  <View key={group.id} style={[styles.groupContainer, styles.cardShadow]}>
-                    <View style={styles.groupHeaderContainer}>
-                      <Text style={styles.groupTitle}>{group.title}</Text>
-                      <TouchableOpacity 
-                        style={styles.deleteButton}
-                        onPress={() => {
-                          console.log('Delete button pressed for group:', group.title);
-                          handleDeleteGroup(group.id);
-                        }}
-                      >
-                        <Feather name="trash-2" size={20} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.groupMembersText}>
-                      {group.members.join(', ')}
-                    </Text>
                   </View>
-                ))
-              ) : (
-                <Text style={styles.noGroupsText}>No groups created yet</Text>
-              )}
-            </View>
+                  
+                  {/* Search Error */}
+                  {searchError && (
+                    <Text style={styles.errorText}>{searchError}</Text>
+                  )}
+                  
+                  {/* Search Results */}
+                  {searchResults.length > 0 && (
+                    <View style={styles.searchResultsContainer}>
+                      <FlatList
+                        data={searchResults}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity 
+                            style={styles.searchResultItem}
+                            onPress={() => addMember(item)}
+                          >
+                            <View>
+                              <Text style={styles.searchResultText}>{item.name}</Text>
+                              <Text style={styles.searchResultEmail}>{item.email}</Text>
+                            </View>
+                            <TouchableOpacity 
+                              style={styles.addMemberButton}
+                              onPress={() => addMember(item)}
+                            >
+                              <Feather name="user-plus" size={18} color="#10B981" />
+                              <Text style={styles.addButtonText}>Add</Text>
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        )}
+                        style={styles.searchResultsList}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* Selected Members */}
+                {selectedMembers.length > 0 && (
+                  <View style={styles.selectedMembersSection}>
+                    <Text style={styles.label}>Selected Members</Text>
+                    <View style={styles.selectedMembersContainer}>
+                      {selectedMembers.map((member) => (
+                        <View key={member.id} style={styles.memberChip}>
+                          <Text style={styles.memberChipText}>{member.name}</Text>
+                          <TouchableOpacity onPress={() => removeMember(member.id)}>
+                            <Feather name="x" size={16} color="#4B5563" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Button to clear search and add more members */}
+                {searchResults.length > 0 && (
+                  <TouchableOpacity 
+                    style={styles.clearSearchButton}
+                    onPress={() => {
+                      setSearchTerm('');
+                      setSearchResults([]);
+                    }}
+                  >
+                    <Text style={styles.clearSearchButtonText}>Clear Search</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Show All Members Button */}
+                <TouchableOpacity 
+                  style={styles.addMemberMainButton}
+                  onPress={() => searchUsers(searchTerm)}
+                  disabled={isSearching}
+                >
+                  {isSearching && searchTerm === '' ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Feather name="users" size={20} color="white" />
+                      <Text style={styles.addMemberMainButtonText}>Show All Associates</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Save Group Button */}
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={saveGroup}
+                >
+                  <Text style={styles.saveButtonText}>Save Group</Text>
+                </TouchableOpacity>
+
+                {/* Existing Groups */}
+                <View style={styles.existingGroupsSection}>
+                  <Text style={styles.sectionTitle}>Existing Groups</Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="large" color="#EA580C" />
+                  ) : groups.length > 0 ? (
+                    groups.map((group) => (
+                      <View key={group.id} style={[styles.groupContainer, styles.cardShadow]}>
+                        <View style={styles.groupHeaderContainer}>
+                          <View style={styles.groupTitleContainer}>
+                            <Text style={styles.groupTitle}>{group.title}</Text>
+                            <Text style={styles.memberCount}>{group.member_count} members</Text>
+                          </View>
+                          <View style={styles.groupActions}>
+                            <TouchableOpacity 
+                              style={styles.addMembersButton}
+                              onPress={() => {
+                                // Set the current group ID for adding members
+                                setCurrentGroupId(group.id);
+                                // Show the add members UI
+                                setShowAddMembers(true);
+                              }}
+                            >
+                              <Feather name="user-plus" size={20} color="#10B981" />
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={styles.deleteButton}
+                              onPress={() => handleDeleteGroup(group.id)}
+                            >
+                              <Feather name="trash-2" size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        <Text style={styles.groupMembersText}>
+                          {group.members || 'No members yet'}
+                        </Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noGroupsText}>No groups created yet</Text>
+                  )}
+                </View>
+              </>
+            )}
           </View>
         </SafeAreaView>
       </BackgroundGradient>
@@ -655,10 +739,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  groupTitleContainer: {
+    flex: 1,
+  },
+  groupActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   groupTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
+  },
+  memberCount: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
   },
   groupMembersText: {
     fontSize: 14,
@@ -668,5 +765,42 @@ const styles = StyleSheet.create({
     padding: 10,  // Increased padding for larger touch target
     backgroundColor: 'rgba(239, 68, 68, 0.1)', // Light red background
     borderRadius: 8,
+  },
+  addMembersButton: {
+    padding: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 8,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  closeButton: {
+    padding: 8,
   },
 });

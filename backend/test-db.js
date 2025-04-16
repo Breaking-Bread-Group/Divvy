@@ -11,7 +11,7 @@ const app = express();
 // Enable CORS and JSON parsing
 app.use(
   cors({
-    origin: "http://localhost:8081",
+    origin: ["http://localhost:8080", "http://localhost:8081"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
@@ -486,6 +486,296 @@ app.get("/api/me", (req, res) => {
     id: req.user.user_id,
     email: req.user.email,
     name: `${req.user.first_name} ${req.user.last_name}`,
+  });
+});
+
+// API endpoint to create a new group
+app.post("/api/groups", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const { title, memberEmails } = req.body;
+
+  if (!title || !memberEmails || !Array.isArray(memberEmails)) {
+    return res.status(400).json({
+      error: "Missing required fields",
+      requiredFields: ["title", "memberEmails"],
+    });
+  }
+
+  // Start a transaction
+  pool.getConnection((err, connection) => {
+    if (err) {
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).json({ error: "Database error", details: err.message });
+      }
+
+      // Insert the group
+      const createGroupQuery = "INSERT INTO divvy_groups (title, created_by) VALUES (?, ?)";
+      connection.query(createGroupQuery, [title, req.user.user_id], (error, results) => {
+        if (error) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).json({ error: "Database error", details: error.message });
+          });
+        }
+
+        const groupId = results.insertId;
+
+        // Get user IDs for all member emails
+        const placeholders = memberEmails.map(() => '?').join(',');
+        const getUsersQuery = `SELECT user_id FROM users WHERE email IN (${placeholders})`;
+        connection.query(getUsersQuery, memberEmails, (error, results) => {
+          if (error) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Database error", details: error.message });
+            });
+          }
+
+          const memberIds = results.map(row => row.user_id);
+          
+          // Insert group members (including the creator)
+          const memberValues = [[groupId, req.user.user_id]]; // Add creator as member
+          memberIds.forEach(userId => {
+            if (userId !== req.user.user_id) { // Don't add creator twice
+              memberValues.push([groupId, userId]);
+            }
+          });
+
+          const addMembersQuery = "INSERT INTO divvy_group_members (group_id, user_id) VALUES ?";
+          connection.query(addMembersQuery, [memberValues], (error) => {
+            if (error) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).json({ error: "Database error", details: error.message });
+              });
+            }
+
+            connection.commit((err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).json({ error: "Database error", details: err.message });
+                });
+              }
+
+              connection.release();
+              res.status(201).json({
+                message: "Group created successfully",
+                groupId: groupId,
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// API endpoint to get user's groups
+app.get("/api/groups", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const query = `
+    SELECT 
+      g.group_id as id,
+      g.title,
+      g.created_at,
+      COUNT(DISTINCT gm.user_id) as member_count,
+      GROUP_CONCAT(DISTINCT CONCAT(u.first_name, ' ', u.last_name) SEPARATOR ', ') as members
+    FROM divvy_groups g
+    JOIN divvy_group_members gm ON g.group_id = gm.group_id
+    JOIN users u ON gm.user_id = u.user_id
+    WHERE g.group_id IN (
+      SELECT group_id 
+      FROM divvy_group_members 
+      WHERE user_id = ?
+    )
+    GROUP BY g.group_id
+    ORDER BY g.created_at DESC
+  `;
+
+  pool.query(query, [req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error fetching groups:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    res.json(results);
+  });
+});
+
+// API endpoint to get group details
+app.get("/api/groups/:id", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const groupId = req.params.id;
+
+  // First check if user is a member of the group
+  const checkMembershipQuery = "SELECT 1 FROM divvy_group_members WHERE group_id = ? AND user_id = ?";
+  pool.query(checkMembershipQuery, [groupId, req.user.user_id], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(403).json({ error: "Not a member of this group" });
+    }
+
+    // Get group details and members
+    const query = `
+      SELECT 
+        g.group_id as id,
+        g.title,
+        g.created_at,
+        u.user_id,
+        CONCAT(u.first_name, ' ', u.last_name) as name,
+        u.email
+      FROM divvy_groups g
+      JOIN divvy_group_members gm ON g.group_id = gm.group_id
+      JOIN users u ON gm.user_id = u.user_id
+      WHERE g.group_id = ?
+    `;
+
+    pool.query(query, [groupId], (error, results) => {
+      if (error) {
+        console.error("Error fetching group details:", error);
+        return res.status(500).json({ error: "Database error", details: error.message });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Format the response
+      const groupDetails = {
+        id: results[0].id,
+        title: results[0].title,
+        created_at: results[0].created_at,
+        members: results.map(row => ({
+          id: row.user_id,
+          name: row.name,
+          email: row.email
+        }))
+      };
+
+      res.json(groupDetails);
+    });
+  });
+});
+
+// API endpoint to delete a group
+app.delete("/api/groups/:id", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const groupId = req.params.id;
+
+  // Check if user is the creator of the group
+  const checkCreatorQuery = "SELECT 1 FROM divvy_groups WHERE group_id = ? AND created_by = ?";
+  pool.query(checkCreatorQuery, [groupId, req.user.user_id], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(403).json({ error: "Only the group creator can delete the group" });
+    }
+
+    // Delete the group (cascade will handle group_members)
+    const deleteQuery = "DELETE FROM divvy_groups WHERE group_id = ?";
+    pool.query(deleteQuery, [groupId], (error, results) => {
+      if (error) {
+        console.error("Error deleting group:", error);
+        return res.status(500).json({ error: "Database error", details: error.message });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      res.json({ message: "Group deleted successfully" });
+    });
+  });
+});
+
+// API endpoint to add members to a group
+app.post("/api/groups/:id/members", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const groupId = req.params.id;
+  const { memberEmails } = req.body;
+
+  if (!memberEmails || !Array.isArray(memberEmails)) {
+    return res.status(400).json({
+      error: "Missing required fields",
+      requiredFields: ["memberEmails"],
+    });
+  }
+
+  // First check if user is the creator of the group
+  const checkCreatorQuery = "SELECT 1 FROM divvy_groups WHERE group_id = ? AND created_by = ?";
+  pool.query(checkCreatorQuery, [groupId, req.user.user_id], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(403).json({ error: "Only the group creator can add members" });
+    }
+
+    // Get user IDs for all member emails
+    const getUsersQuery = "SELECT user_id FROM users WHERE email IN (?)";
+    pool.query(getUsersQuery, [memberEmails], (error, results) => {
+      if (error) {
+        return res.status(500).json({ error: "Database error", details: error.message });
+      }
+
+      const memberIds = results.map(row => row.user_id);
+      
+      // Check if any of these users are already members
+      const checkExistingQuery = "SELECT user_id FROM divvy_group_members WHERE group_id = ? AND user_id IN (?)";
+      pool.query(checkExistingQuery, [groupId, memberIds], (error, results) => {
+        if (error) {
+          return res.status(500).json({ error: "Database error", details: error.message });
+        }
+
+        const existingMemberIds = results.map(row => row.user_id);
+        const newMemberIds = memberIds.filter(id => !existingMemberIds.includes(id));
+
+        if (newMemberIds.length === 0) {
+          return res.status(400).json({ error: "All users are already members of this group" });
+        }
+
+        // Insert new members
+        const memberValues = newMemberIds.map(userId => [groupId, userId]);
+        const addMembersQuery = "INSERT INTO divvy_group_members (group_id, user_id) VALUES ?";
+        pool.query(addMembersQuery, [memberValues], (error) => {
+          if (error) {
+            return res.status(500).json({ error: "Database error", details: error.message });
+          }
+
+          res.status(201).json({
+            message: "Members added successfully",
+            addedCount: newMemberIds.length
+          });
+        });
+      });
+    });
   });
 });
 

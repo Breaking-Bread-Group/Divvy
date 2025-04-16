@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('./test-db');
+const app = require('../test-db');
 
 // Test user data
 const testUser = {

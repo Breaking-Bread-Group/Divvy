@@ -1,7 +1,0 @@
-{
-  "stripe_key": "",
-  "database": "divvy",
-  "database_url": "localhost",
-  "database_user": "root",
-  "database_password": ""
-}
