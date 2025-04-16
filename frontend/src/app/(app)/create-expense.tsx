@@ -11,6 +11,16 @@ const USER_STORAGE_KEY = '@divvy_current_user';
 
 export default function CreateExpense() {
   const router = useRouter();
+  const handleAmountChange = (text: string) => {
+    // Remove all non-numeric characters except for one optional decimal
+    const sanitized = text.replace(/[^0-9.]/g, '');
+
+    // Prevent multiple decimals
+    if ((sanitized.match(/\./g) || []).length > 1) return;
+
+    setAmount(sanitized);
+  }
+  
   
   // State for expense details
   const [expenseTitle, setExpenseTitle] = useState('Company Dinner');
@@ -610,6 +620,8 @@ export default function CreateExpense() {
                   onChangeText={setAmount}
                   placeholder="0.00"
                   keyboardType="decimal-pad"
+                  value={amount}
+                onChangeText={handleAmountChange}
                 />
                 <TouchableOpacity style={styles.editButton}>
                   <Feather name="edit-2" size={20} color="#6B7280" />
