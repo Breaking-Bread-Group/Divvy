@@ -92,7 +92,7 @@ export default function ManageExpenses() {
                   </View>
                   
                   <Text style={styles.groupName}>Group: {expense.group_title}</Text>
-                  <Text style={styles.amount}>Amount: ${expense.amount.toFixed(2)}</Text>
+                  <Text style={styles.amount}>Amount: ${Number(expense.total_amount || 0).toFixed(2)}</Text>
                   <Text style={styles.date}>Date: {formatDate(expense.created_at)}</Text>
                   
                   <View style={styles.footer}>

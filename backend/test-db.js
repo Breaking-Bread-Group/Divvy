@@ -1012,7 +1012,7 @@ app.get("/api/expenses", (req, res) => {
       e.created_by,
       g.title as group_title,
       CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-      GROUP_CONCAT(
+      JSON_ARRAYAGG(
         JSON_OBJECT(
           'split_id', es.split_id,
           'user_id', es.user_id,
@@ -1039,11 +1039,21 @@ app.get("/api/expenses", (req, res) => {
       return res.status(500).json({ error: "Database error", details: error.message });
     }
 
-    // Parse the JSON strings in the splits column
-    const formattedResults = results.map(row => ({
-      ...row,
-      splits: row.splits ? row.splits.split(',').map(split => JSON.parse(split)) : []
-    }));
+    // Format the results
+    const formattedResults = results.map(row => {
+      try {
+        return {
+          ...row,
+          splits: row.splits ? (typeof row.splits === 'string' ? JSON.parse(row.splits) : row.splits) : []
+        };
+      } catch (err) {
+        console.error('Error parsing splits:', err);
+        return {
+          ...row,
+          splits: []
+        };
+      }
+    });
 
     res.json(formattedResults);
   });

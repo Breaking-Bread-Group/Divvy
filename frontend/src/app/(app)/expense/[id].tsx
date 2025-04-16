@@ -87,7 +87,7 @@ export default function ExpenseDetail() {
           <View style={styles.expenseCard}>
             <Text style={styles.expenseTitle}>{expense.title}</Text>
             <Text style={styles.groupName}>Group: {expense.group_title}</Text>
-            <Text style={styles.amount}>Total Amount: ${expense.total_amount.toFixed(2)}</Text>
+            <Text style={styles.amount}>Total Amount: ${Number(expense.total_amount || 0).toFixed(2)}</Text>
             <Text style={styles.date}>Date: {formatDate(expense.created_at)}</Text>
             <Text style={styles.description}>
               {expense.description || 'No description provided'}
