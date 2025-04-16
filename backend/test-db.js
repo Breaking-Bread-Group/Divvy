@@ -779,6 +779,276 @@ app.post("/api/groups/:id/members", (req, res) => {
   });
 });
 
+// API endpoint to create a new expense
+app.post("/api/groups/:groupId/expenses", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const groupId = req.params.groupId;
+  const { title, total_amount, description, split_type, splits } = req.body;
+
+  if (!title || !total_amount || !split_type || !splits) {
+    return res.status(400).json({
+      error: "Missing required fields",
+      requiredFields: ["title", "total_amount", "split_type", "splits"],
+    });
+  }
+
+  // Start a transaction
+  pool.getConnection((err, connection) => {
+    if (err) {
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).json({ error: "Database error", details: err.message });
+      }
+
+      // Insert the expense
+      const createExpenseQuery = `
+        INSERT INTO expenses (group_id, title, total_amount, description, created_by)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      
+      connection.query(
+        createExpenseQuery,
+        [groupId, title, total_amount, description || null, req.user.user_id],
+        (error, results) => {
+          if (error) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Database error", details: error.message });
+            });
+          }
+
+          const expenseId = results.insertId;
+
+          // Create expense splits
+          const splitValues = splits.map(split => [
+            expenseId,
+            split.user_id,
+            split.amount,
+            split.percentage
+          ]);
+
+          const createSplitsQuery = `
+            INSERT INTO expense_splits (expense_id, user_id, amount, percentage)
+            VALUES ?
+          `;
+
+          connection.query(createSplitsQuery, [splitValues], (error) => {
+            if (error) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).json({ error: "Database error", details: error.message });
+              });
+            }
+
+            connection.commit((err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).json({ error: "Database error", details: err.message });
+                });
+              }
+
+              connection.release();
+              res.status(201).json({
+                message: "Expense created successfully",
+                expenseId: expenseId,
+              });
+            });
+          });
+        }
+      );
+    });
+  });
+});
+
+// API endpoint to get all expenses for a group
+app.get("/api/groups/:groupId/expenses", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const groupId = req.params.groupId;
+
+  const query = `
+    SELECT 
+      e.expense_id,
+      e.title,
+      e.total_amount,
+      e.description,
+      e.is_settled,
+      e.is_active,
+      e.is_paid,
+      e.created_at,
+      e.created_by,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      GROUP_CONCAT(
+        JSON_OBJECT(
+          'split_id', es.split_id,
+          'user_id', es.user_id,
+          'amount', es.amount,
+          'percentage', es.percentage,
+          'is_accepted', es.is_accepted,
+          'is_paid', es.is_paid,
+          'user_name', CONCAT(u2.first_name, ' ', u2.last_name)
+        )
+      ) as splits
+    FROM expenses e
+    JOIN users u ON e.created_by = u.user_id
+    JOIN expense_splits es ON e.expense_id = es.expense_id
+    JOIN users u2 ON es.user_id = u2.user_id
+    WHERE e.group_id = ?
+    GROUP BY e.expense_id
+    ORDER BY e.created_at DESC
+  `;
+
+  pool.query(query, [groupId], (error, results) => {
+    if (error) {
+      console.error("Error fetching expenses:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    // Parse the JSON strings in the splits column
+    const formattedResults = results.map(row => ({
+      ...row,
+      splits: row.splits ? row.splits.split(',').map(split => JSON.parse(split)) : []
+    }));
+
+    res.json(formattedResults);
+  });
+});
+
+// API endpoint to update expense split status
+app.put("/api/expenses/:expenseId/splits/:splitId", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const { expenseId, splitId } = req.params;
+  const { is_accepted, is_paid } = req.body;
+
+  const query = `
+    UPDATE expense_splits 
+    SET is_accepted = ?, is_paid = ?
+    WHERE split_id = ? AND expense_id = ? AND user_id = ?
+  `;
+
+  pool.query(
+    query,
+    [is_accepted, is_paid, splitId, expenseId, req.user.user_id],
+    (error, results) => {
+      if (error) {
+        console.error("Error updating expense split:", error);
+        return res.status(500).json({ error: "Database error", details: error.message });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ error: "Expense split not found or unauthorized" });
+      }
+
+      res.json({ message: "Expense split updated successfully" });
+    }
+  );
+});
+
+// API endpoint to delete an expense
+app.delete("/api/expenses/:expenseId", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const expenseId = req.params.expenseId;
+
+  // Check if user is the creator of the expense
+  const checkCreatorQuery = "SELECT 1 FROM expenses WHERE expense_id = ? AND created_by = ?";
+  pool.query(checkCreatorQuery, [expenseId, req.user.user_id], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(403).json({ error: "Only the expense creator can delete the expense" });
+    }
+
+    // Delete the expense (cascade will handle expense_splits)
+    const deleteQuery = "DELETE FROM expenses WHERE expense_id = ?";
+    pool.query(deleteQuery, [expenseId], (error, results) => {
+      if (error) {
+        console.error("Error deleting expense:", error);
+        return res.status(500).json({ error: "Database error", details: error.message });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ error: "Expense not found" });
+      }
+
+      res.json({ message: "Expense deleted successfully" });
+    });
+  });
+});
+
+// API endpoint to get all expenses for a user
+app.get("/api/expenses", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const query = `
+    SELECT 
+      e.expense_id,
+      e.title,
+      e.total_amount,
+      e.description,
+      e.is_settled,
+      e.is_active,
+      e.is_paid,
+      e.created_at,
+      e.created_by,
+      g.title as group_title,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      GROUP_CONCAT(
+        JSON_OBJECT(
+          'split_id', es.split_id,
+          'user_id', es.user_id,
+          'amount', es.amount,
+          'percentage', es.percentage,
+          'is_accepted', es.is_accepted,
+          'is_paid', es.is_paid,
+          'user_name', CONCAT(u2.first_name, ' ', u2.last_name)
+        )
+      ) as splits
+    FROM expenses e
+    JOIN divvy_groups g ON e.group_id = g.group_id
+    JOIN users u ON e.created_by = u.user_id
+    JOIN expense_splits es ON e.expense_id = es.expense_id
+    JOIN users u2 ON es.user_id = u2.user_id
+    WHERE es.user_id = ?
+    GROUP BY e.expense_id
+    ORDER BY e.created_at DESC
+  `;
+
+  pool.query(query, [req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error fetching expenses:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    // Parse the JSON strings in the splits column
+    const formattedResults = results.map(row => ({
+      ...row,
+      splits: row.splits ? row.splits.split(',').map(split => JSON.parse(split)) : []
+    }));
+
+    res.json(formattedResults);
+  });
+});
+
 const port = 8080;
 app.listen(port, () => {
   console.log(`Test server running at http://localhost:${port}`);
