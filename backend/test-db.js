@@ -97,7 +97,7 @@ app.use((req, res, next) => {
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Mkilop12!",
+  password: "1204",
   database: "divvy",
   port: 3306,
   waitForConnections: true,

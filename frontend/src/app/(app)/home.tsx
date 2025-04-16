@@ -126,7 +126,8 @@ export default function Home() {
 
             <TouchableOpacity 
               style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/home')}
+              onPress={() => router.push('/(app)/manage-expenses')}
+
             >
               <LinearGradient
                 colors={['#FFE8D2', '#FDB78F']}

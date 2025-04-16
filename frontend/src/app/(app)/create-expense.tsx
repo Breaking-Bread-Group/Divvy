@@ -103,12 +103,11 @@ export default function CreateExpense() {
         });
       }
     } else if (currentSplitType === 'amount') {
-      // For demo purposes, default to equal amounts
-      const perPersonAmount = totalAmount / selectedMembers.length;
+      // Do **not** overwrite user‑typed amounts.
+      // If a member doesn’t have any yet, default to "".
       updatedMembers = selectedMembers.map(member => ({
         ...member,
-        splitAmount: perPersonAmount.toFixed(2),
-        percentage: (100 / selectedMembers.length).toFixed(1)
+        splitAmount: member.splitAmount ?? ''
       }));
     }
     
@@ -500,6 +499,18 @@ export default function CreateExpense() {
     }
   };
 
+  // User types an amount directly for one member
+  const handleManualAmountChange = (memberId: string, newAmount: string) => {
+    // allow only digits + at most one dot
+    if (!/^(\d*\.?\d*)$/.test(newAmount)) return;
+
+    const updated = selectedMembers.map(m =>
+      m.id === memberId ? { ...m, splitAmount: newAmount } : m
+    );
+    setSelectedMembers(updated);
+  };
+
+
   // Handle expense submission
   const handleExpense = () => {
     // Validate inputs
@@ -843,9 +854,20 @@ export default function CreateExpense() {
                           )
                         ) : (
                           // Non-percentage mode - just show amount
-                          member.splitAmount && (
-                            <Text style={styles.splitAmountText}>(${member.splitAmount})</Text>
+                          splitOption === 'amount' ? (
+                            <TextInput
+                              style={[styles.manualAmountInput, styles.splitAmountText]}
+                              value={member.splitAmount}
+                              onChangeText={(text) => handleManualAmountChange(member.id, text)}
+                              keyboardType="decimal-pad"
+                              placeholder="0.00"
+                            />
+                          ) : (
+                            member.splitAmount && (
+                              <Text style={styles.splitAmountText}>(${member.splitAmount})</Text>
+                            )
                           )
+                          
                         )}
                       </View>
                       
@@ -1272,6 +1294,10 @@ const styles = StyleSheet.create({
     color: '#057A55',
     fontWeight: '500',
   },
+  manualAmountInput: {
+    minWidth: 60,
+    padding: 0,
+  },  
   splitSection: {
     marginBottom: 32,
   },
