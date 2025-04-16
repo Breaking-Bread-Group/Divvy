@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StatusBar, View } from 'react-native';
+import { StatusBar, View, Alert } from 'react-native';
 import { Formik } from 'formik';
 import { useRouter } from 'expo-router';
 import { Octicons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../components/styles';
+import { useAuth } from '../../context/AuthContext';
 import {
     StyledContainer,
     InnerContainer,
@@ -28,6 +29,18 @@ const { brand, darkLight } = Colors;
 export default function Login() {
     const [hidePassword, setHidePassword] = useState(true);
     const router = useRouter();
+    const { login } = useAuth();
+
+    const handleLogin = async (values: { email: string; password: string }) => {
+        try {
+            await login(values.email, values.password);
+        } catch (error) {
+            Alert.alert(
+                'Login Failed',
+                error instanceof Error ? error.message : 'Invalid email or password'
+            );
+        }
+    };
 
     return (
         <StyledContainer>
@@ -38,15 +51,13 @@ export default function Login() {
 
                 <Formik
                     initialValues={{ email: '', password: '' }}
-                    onSubmit={(values) => {
-                        console.log(values);
-                        router.push('/(app)/home');
-                    }}
+                    onSubmit={handleLogin}
                 >
                     {({ handleChange, handleBlur, handleSubmit, values }) => (
                         <StyledFormArea>
                             <TextInput
                                 label="Email Address"
+                                icon="mail"
                                 placeholder="andy@gmail.com"
                                 placeholderTextColor={darkLight}
                                 onChangeText={handleChange('email')}
@@ -57,6 +68,7 @@ export default function Login() {
 
                             <TextInput
                                 label="Password"
+                                icon="lock"
                                 placeholder="* * * * * * * *"
                                 placeholderTextColor={darkLight}
                                 onChangeText={handleChange('password')}

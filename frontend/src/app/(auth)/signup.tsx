@@ -1,11 +1,10 @@
-import axios from 'axios'; // Install axios with `npm install axios`
 import React, { useState } from 'react';
-import { StatusBar, View } from 'react-native';
-import { ScrollView, Text, StyleSheet } from 'react-native';
+import { StatusBar, View, Alert, ScrollView } from 'react-native';
 import { Formik } from 'formik';
 import { useRouter } from 'expo-router';
 import { Octicons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../components/styles';
+import { useAuth } from '../../context/AuthContext';
 import {
     StyledContainer,
     InnerContainer,
@@ -30,128 +29,146 @@ const { brand, darkLight } = Colors;
 export default function Signup() {
     const [hidePassword, setHidePassword] = useState(true);
     const router = useRouter();
-    const handleSignup = async (values) => {
+    const { register } = useAuth();
+
+    const handleSignup = async (values: {
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string;
+        password: string;
+        confirmPassword: string;
+    }) => {
         try {
-            const response = await axios.post('http://localhost:3000/signup', {
+            // Validate passwords match
+            if (values.password !== values.confirmPassword) {
+                Alert.alert('Error', 'Passwords do not match');
+                return;
+            }
+
+            await register({
                 email: values.email,
                 password: values.password,
-                first_name: "John",
-                last_name: "Doe",
-                phone: "(555) 123-4567",
+                first_name: values.first_name,
+                last_name: values.last_name,
+                phone: values.phone,
             });
-    
-            alert(response.data.message);
-            router.push('/(app)/home');  // Redirect to the home page
+
+            Alert.alert('Success', 'Account created successfully! Please login.');
         } catch (error) {
-            alert('Signup failed: ' + (error.response?.data?.message || error.message));
+            Alert.alert(
+                'Signup Failed',
+                error instanceof Error ? error.message : 'Failed to create account'
+            );
         }
     };
 
-
-
-    
     return (
         <ScrollView>
-        <StyledContainer>
-            <StatusBar style="dark" />
-            <InnerContainer>
-                <PageTitle>Divvy</PageTitle>
-                <SubTitle>Account Signup</SubTitle>
+            <StyledContainer>
+                <StatusBar style="dark" />
+                <InnerContainer>
+                    <PageTitle>Divvy</PageTitle>
+                    <SubTitle>Account Signup</SubTitle>
 
-                <Formik
-                 initialValues={{first_name: '', last_name: '', email: '', phone: '', password: '', confirmPassword: '' }}
-                 onSubmit={handleSignup}  // Use the external handleSignup function
-                >
-                    {({ handleChange, handleBlur, handleSubmit, values }) => (
-                        <StyledFormArea>
-                      
+                    <Formik
+                        initialValues={{
+                            first_name: '',
+                            last_name: '',
+                            email: '',
+                            phone: '',
+                            password: '',
+                            confirmPassword: ''
+                        }}
+                        onSubmit={handleSignup}
+                    >
+                        {({ handleChange, handleBlur, handleSubmit, values }) => (
+                            <StyledFormArea>
+                                <TextInput
+                                    label="First Name"
+                                    icon="person"
+                                    placeholder="First Name"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('first_name')}
+                                    onBlur={handleBlur('first_name')}
+                                    value={values.first_name}
+                                />
 
-                            <TextInput
-                                label="First Name"
-                                placeholder="First Name"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('first_name')}
-                                onBlur={handleBlur('first_name')}
-                                value={values.first_name}
-                                
-                            />
+                                <TextInput
+                                    label="Last Name"
+                                    icon="person"
+                                    placeholder="Last Name"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('last_name')}
+                                    onBlur={handleBlur('last_name')}
+                                    value={values.last_name}
+                                />
 
-                            <TextInput
-                                label="Last Name"
-                                placeholder="Last Name"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('last_name')}
-                                onBlur={handleBlur('last_name')}
-                                value={values.last_name}
-                                
-                            />
+                                <TextInput
+                                    label="Email Address"
+                                    icon="mail"
+                                    placeholder="andy@gmail.com"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('email')}
+                                    onBlur={handleBlur('email')}
+                                    value={values.email}
+                                    keyboardType="email-address"
+                                />
 
-                            <TextInput
-                                label="Email Address"
-                                placeholder="andy@gmail.com"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('email')}
-                                onBlur={handleBlur('email')}
-                                value={values.email}
-                                keyboardType="email-address"
-                            />
+                                <TextInput
+                                    label="Phone"
+                                    icon="device-mobile"
+                                    placeholder="Phone"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('phone')}
+                                    onBlur={handleBlur('phone')}
+                                    value={values.phone}
+                                    keyboardType="phone-pad"
+                                />
 
-                            <TextInput      
-                                label="Phone"
-                                placeholder="Phone"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('phone')}
-                                onBlur={handleBlur('phone')}
-                                value={values.phone}
-                                keyboardType = "phone-pad"
-                            />
+                                <TextInput
+                                    label="Password"
+                                    icon="lock"
+                                    placeholder="* * * * * * * *"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('password')}
+                                    onBlur={handleBlur('password')}
+                                    value={values.password}
+                                    secureTextEntry={hidePassword}
+                                    isPassword={true}
+                                    hidePassword={hidePassword}
+                                    setHidePassword={setHidePassword}
+                                />
 
-                            
-                            
+                                <TextInput
+                                    label="Confirm Password"
+                                    icon="lock"
+                                    placeholder="* * * * * * * *"
+                                    placeholderTextColor={darkLight}
+                                    onChangeText={handleChange('confirmPassword')}
+                                    onBlur={handleBlur('confirmPassword')}
+                                    value={values.confirmPassword}
+                                    secureTextEntry={hidePassword}
+                                    isPassword={true}
+                                    hidePassword={hidePassword}
+                                    setHidePassword={setHidePassword}
+                                />
 
-                           
-
-                            <TextInput
-                                label="Password"
-                                placeholder="* * * * * * * *"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('password')}
-                                onBlur={handleBlur('password')}
-                                value={values.password}
-                                secureTextEntry={hidePassword}
-                                isPassword={true}
-                                hidePassword={hidePassword}
-                                setHidePassword={setHidePassword}
-                            />
-
-                            <TextInput
-                                label="Confirm Password"
-                                placeholder="* * * * * * * *"
-                                placeholderTextColor={darkLight}
-                                onChangeText={handleChange('confirmPassword')}
-                                onBlur={handleBlur('confirmPassword')}
-                                value={values.confirmPassword}
-                                secureTextEntry={hidePassword}
-                                isPassword={true}
-                                hidePassword={hidePassword}
-                                setHidePassword={setHidePassword}
-                            />
-
-                            <StyledButton onPress={handleSubmit}>
-                                <ButtonText>Signup</ButtonText>
-                            </StyledButton>
-                            <Line />
-                            <ExtraView>
-                                <ExtraText>Already have an account? </ExtraText>
-                                <TextLink onPress={() => router.push('/(auth)/login')}>
-                                    <TextLinkContent>Login</TextLinkContent>
-                                </TextLink>
-                            </ExtraView>
-                        </StyledFormArea>
-                    )}
-                </Formik>
-            </InnerContainer>
-        </StyledContainer>
+                                <StyledButton onPress={handleSubmit}>
+                                    <ButtonText>Signup</ButtonText>
+                                </StyledButton>
+                                <Line />
+                                <ExtraView>
+                                    <ExtraText>Already have an account? </ExtraText>
+                                    <TextLink onPress={() => router.push('/(auth)/login')}>
+                                        <TextLinkContent>Login</TextLinkContent>
+                                    </TextLink>
+                                </ExtraView>
+                            </StyledFormArea>
+                        )}
+                    </Formik>
+                </InnerContainer>
+            </StyledContainer>
         </ScrollView>
     );
 }

@@ -1,10 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AccountSettings() {
   const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -87,6 +97,15 @@ export default function AccountSettings() {
             </View>
           </View>
         </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity 
+          style={[styles.logoutButton, styles.buttonShadow]}
+          onPress={handleLogout}
+        >
+          <Feather name="log-out" size={24} color="#EF4444" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -95,7 +114,7 @@ export default function AccountSettings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -105,10 +124,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   profileButton: {
+    backgroundColor: 'white',
     padding: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   notificationContainer: {
     position: 'relative',
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 12,
+  },
+  iconShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   notificationDot: {
     position: 'absolute',
@@ -119,15 +155,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-  iconShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   content: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   profileSection: {
     alignItems: 'center',
@@ -180,5 +211,27 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 8,
+  },
+  buttonShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 }); 

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
-    "full": "tsc && node build/index.js"
+    "full": "tsc && node build/index.js",
+    "test": "node test-auth.js"
   },
   "author": "",
   "license": "ISC",
