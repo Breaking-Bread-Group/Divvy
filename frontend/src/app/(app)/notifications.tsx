@@ -61,6 +61,17 @@ export default function Notifications() {
               John Anderson has invited you to expense "Lunch"
             </Text>
           </TouchableOpacity>
+
+           {/* Notification 4 */}
+          <TouchableOpacity 
+            style={styles.notificationItem}
+            onPress={() => router.push('/(app)/home')}
+          >
+            <Text style={styles.notificationText}>
+              Your new group "Divvy Demo" has been created
+            </Text>
+          </TouchableOpacity>
+
         </View>
       </View>
     </SafeAreaView>
