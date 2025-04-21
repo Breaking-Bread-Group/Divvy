@@ -716,12 +716,12 @@ app.delete("/api/groups/:id", (req, res) => {
 });
 
 // API endpoint to add members to a group
-app.post("/api/groups/:id/members", (req, res) => {
+app.post("/api/groups/:groupId/members", (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 
-  const groupId = req.params.id;
+  const groupId = req.params.groupId;
   const { memberEmails } = req.body;
 
   if (!memberEmails || !Array.isArray(memberEmails)) {
@@ -731,51 +731,77 @@ app.post("/api/groups/:id/members", (req, res) => {
     });
   }
 
-  // First check if user is the creator of the group
-  const checkCreatorQuery = "SELECT 1 FROM divvy_groups WHERE group_id = ? AND created_by = ?";
-  pool.query(checkCreatorQuery, [groupId, req.user.user_id], (error, results) => {
+  // First check if user is a member of the group
+  const checkMembershipQuery = "SELECT 1 FROM divvy_group_members WHERE group_id = ? AND user_id =?";
+  pool.query(checkMembershipQuery, [groupId, req.user.user_id], (error, results) => {
     if (error) {
+      console.error("Error checking membership:", error);
       return res.status(500).json({ error: "Database error", details: error.message });
     }
 
     if (results.length === 0) {
-      return res.status(403).json({ error: "Only the group creator can add members" });
+      return res.status(403).json({ error: "Not a member of this group" });
     }
 
-    // Get user IDs for all member emails
-    const getUsersQuery = "SELECT user_id FROM users WHERE email IN (?)";
-    pool.query(getUsersQuery, [memberEmails], (error, results) => {
-      if (error) {
-        return res.status(500).json({ error: "Database error", details: error.message });
+    // Get group title for notification
+    pool.query("SELECT title FROM divvy_groups WHERE group_id = ?", [groupId], (error, results) => {
+      if (error || results.length === 0) {
+        console.error("Error fetching group title:", error);
+        return res.status(500).json({ error: "Group not found" });
       }
 
-      const memberIds = results.map(row => row.user_id);
-      
-      // Check if any of these users are already members
-      const checkExistingQuery = "SELECT user_id FROM divvy_group_members WHERE group_id = ? AND user_id IN (?)";
-      pool.query(checkExistingQuery, [groupId, memberIds], (error, results) => {
+      const groupTitle = results[0].title;
+
+      // Get user IDs for all member emails
+      const getUsersQuery = "SELECT user_id FROM users WHERE email IN (?)";
+      pool.query(getUsersQuery, [memberEmails], (error, results) => {
         if (error) {
+          console.error("Error fetching user IDs:", error);
           return res.status(500).json({ error: "Database error", details: error.message });
         }
 
-        const existingMemberIds = results.map(row => row.user_id);
-        const newMemberIds = memberIds.filter(id => !existingMemberIds.includes(id));
-
-        if (newMemberIds.length === 0) {
-          return res.status(400).json({ error: "All users are already members of this group" });
-        }
-
-        // Insert new members
-        const memberValues = newMemberIds.map(userId => [groupId, userId]);
-        const addMembersQuery = "INSERT INTO divvy_group_members (group_id, user_id) VALUES ?";
-        pool.query(addMembersQuery, [memberValues], (error) => {
+        const memberIds = results.map(row => row.user_id);
+        
+        // Check if any of these users are already members
+        const checkExistingQuery = "SELECT user_id FROM divvy_group_members WHERE group_id = ? AND user_id IN (?)";
+        pool.query(checkExistingQuery, [groupId, memberIds], (error, results) => {
           if (error) {
+            console.error("Error checking existing members:", error);
             return res.status(500).json({ error: "Database error", details: error.message });
           }
 
-          res.status(201).json({
-            message: "Members added successfully",
-            addedCount: newMemberIds.length
+          const existingMemberIds = results.map(row => row.user_id);
+          const newMemberIds = memberIds.filter(id => !existingMemberIds.includes(id));
+
+          if (newMemberIds.length === 0) {
+            return res.status(400).json({ error: "All users are already members of this group" });
+          }
+
+          // Insert new members
+          const memberValues = newMemberIds.map(userId => [groupId, userId]);
+          const addMembersQuery = "INSERT INTO divvy_group_members (group_id, user_id) VALUES ?";
+          pool.query(addMembersQuery, [memberValues], (error) => {
+            if (error) {
+              console.error("Error adding members:", error);
+              return res.status(500).json({ error: "Database error", details: error.message });
+            }
+
+            // Create notifications for each new member
+            console.log("Creating notifications for new members:", newMemberIds);
+            newMemberIds.forEach(userId => {
+              createNotification(
+                userId,
+                'group_invite',
+                'New Group Invitation',
+                `You've been added to the group "${groupTitle}"`,
+                groupId
+              );
+            });
+
+            res.status(201).json({
+              message: "Members added successfully",
+              addedCount: newMemberIds.length
+            });
           });
         });
       });
@@ -824,6 +850,7 @@ app.post("/api/groups/:groupId/expenses", (req, res) => {
           if (error) {
             return connection.rollback(() => {
               connection.release();
+              console.error("Error creating expense:", error);
               res.status(500).json({ error: "Database error", details: error.message });
             });
           }
@@ -847,14 +874,30 @@ app.post("/api/groups/:groupId/expenses", (req, res) => {
             if (error) {
               return connection.rollback(() => {
                 connection.release();
+                console.error("Error creating splits:", error);
                 res.status(500).json({ error: "Database error", details: error.message });
               });
             }
+
+            // Create notifications for each split user
+            console.log("Creating notifications for expense splits:", splits);
+            splits.forEach(split => {
+              if (split.user_id !== req.user.user_id) { // Don't notify the creator
+                createNotification(
+                  split.user_id,
+                  'expense_added',
+                  'New Expense Added',
+                  `You've been added to expense "${title}" for $${split.amount}`,
+                  expenseId
+                );
+              }
+            });
 
             connection.commit((err) => {
               if (err) {
                 return connection.rollback(() => {
                   connection.release();
+                  console.error("Error committing transaction:", err);
                   res.status(500).json({ error: "Database error", details: err.message });
                 });
               }
@@ -1161,6 +1204,71 @@ function getExpenseStatus(expense) {
   } else {
     return 'Paid';
   }
+}
+
+// API endpoint to get user notifications
+app.get("/api/notifications", (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const query = `
+    SELECT 
+      notification_id,
+      type,
+      title,
+      message,
+      related_id,
+      is_read,
+      created_at
+    FROM notifications
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 50
+  `;
+
+  pool.query(query, [req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error fetching notifications:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+    res.json(results);
+  });
+});
+
+// API endpoint to mark notification as read
+app.put("/api/notifications/:id/read", (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const query = `
+    UPDATE notifications
+    SET is_read = TRUE
+    WHERE notification_id = ? AND user_id = ?
+  `;
+
+  pool.query(query, [req.params.id, req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+    res.json({ success: true });
+  });
+});
+
+// Helper function to create notification
+function createNotification(userId, type, title, message, relatedId = null) {
+  const query = `
+    INSERT INTO notifications (user_id, type, title, message, related_id)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  pool.query(query, [userId, type, title, message, relatedId], (error) => {
+    if (error) {
+      console.error("Error creating notification:", error);
+    }
+  });
 }
 
 const port = 8080;

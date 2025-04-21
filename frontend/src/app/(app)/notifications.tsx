@@ -1,10 +1,115 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+
+interface Notification {
+  notification_id: number;
+  type: string;
+  title: string;
+  message: string;
+  related_id: number;
+  is_read: boolean;
+  created_at: string;
+}
 
 export default function Notifications() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/notifications', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+      
+      const data = await response.json();
+      setNotifications(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (notificationId: number) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
+      
+      // Update local state
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification.notification_id === notificationId
+            ? { ...notification, is_read: true }
+            : notification
+        )
+      );
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleNotificationPress = (notification: Notification) => {
+    // Mark as read
+    if (!notification.is_read) {
+      markAsRead(notification.notification_id);
+    }
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'group_invite':
+        router.push(`/(app)/groups/${notification.related_id}`);
+        break;
+      case 'expense_added':
+        router.push(`/(app)/expenses/${notification.related_id}`);
+        break;
+      default:
+        router.push('/(app)/home');
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchNotifications}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -21,7 +126,7 @@ export default function Notifications() {
           onPress={() => router.back()}
         >
           <Feather name="bell" size={24} color="black" />
-          <View style={styles.notificationDot} />
+          {notifications.some(n => !n.is_read) && <View style={styles.notificationDot} />}
         </TouchableOpacity>
       </View>
 
@@ -29,38 +134,30 @@ export default function Notifications() {
         <Text style={styles.title}>Notifications</Text>
         
         <View style={styles.notificationsList}>
-          {/* Notification 1 */}
-          <TouchableOpacity 
-            style={styles.notificationItem}
-            onPress={() => router.push('/(app)/home')}
-          >
-            <View style={styles.notificationDotContainer}>
-              <View style={styles.notificationItemDot} />
-            </View>
-            <Text style={styles.notificationText}>
-              You've been requested to join the group "Company Dinner Party"
-            </Text>
-          </TouchableOpacity>
-
-          {/* Notification 2 */}
-          <TouchableOpacity 
-            style={styles.notificationItem}
-            onPress={() => router.push('/(app)/home')}
-          >
-            <Text style={styles.notificationText}>
-              "Roommates" group has created a new expense "Monthly Rent"
-            </Text>
-          </TouchableOpacity>
-
-          {/* Notification 3 */}
-          <TouchableOpacity 
-            style={styles.notificationItem}
-            onPress={() => router.push('/(app)/home')}
-          >
-            <Text style={styles.notificationText}>
-              John Anderson has invited you to expense "Lunch"
-            </Text>
-          </TouchableOpacity>
+          {notifications.length === 0 ? (
+            <Text style={styles.emptyText}>No notifications</Text>
+          ) : (
+            notifications.map((notification) => (
+              <TouchableOpacity 
+                key={notification.notification_id}
+                style={styles.notificationItem}
+                onPress={() => handleNotificationPress(notification)}
+              >
+                {!notification.is_read && (
+                  <View style={styles.notificationDotContainer}>
+                    <View style={styles.notificationItemDot} />
+                  </View>
+                )}
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                  <Text style={styles.notificationText}>{notification.message}</Text>
+                  <Text style={styles.notificationTime}>
+                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -133,9 +230,48 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-  notificationText: {
+  notificationContent: {
     flex: 1,
+  },
+  notificationTitle: {
     fontSize: 16,
-    lineHeight: 24,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  notificationText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 16,
+    marginTop: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryText: {
+    color: '#3B82F6',
+    fontSize: 16,
   },
 }); 
