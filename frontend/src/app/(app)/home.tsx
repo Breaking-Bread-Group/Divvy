@@ -535,17 +535,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 16,
+      columnGap: 12,
   },
   actionButton: {
-    width: '47%',
+    flexBasis: '48%', // Adjust this value to control the width of the buttons
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: 'white',
     marginBottom: 4,
-  },
+  },  
   actionButtonGradient: {
     padding: 16,
     alignItems: 'center',
