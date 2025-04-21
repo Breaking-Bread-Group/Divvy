@@ -248,13 +248,10 @@ export const CreateExpenseForm: React.FC<CreateExpenseFormProps> = ({
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
+            placeholder="Enter expense title"
             value={title}
             onChangeText={setTitle}
-            placeholder="Enter expense title"
           />
-          <TouchableOpacity style={styles.editButton}>
-            <Feather name="edit-2" size={20} color="#6B7280" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -262,17 +259,13 @@ export const CreateExpenseForm: React.FC<CreateExpenseFormProps> = ({
       <View style={styles.inputSection}>
         <Text style={styles.label}>Amount</Text>
         <View style={styles.inputContainer}>
-          <Text style={styles.currencySymbol}>$</Text>
           <TextInput
             style={styles.input}
+            placeholder="0.00"
             value={amount}
             onChangeText={setAmount}
-            placeholder="0.00"
             keyboardType="decimal-pad"
           />
-          <TouchableOpacity style={styles.editButton}>
-            <Feather name="edit-2" size={20} color="#6B7280" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -281,49 +274,42 @@ export const CreateExpenseForm: React.FC<CreateExpenseFormProps> = ({
         <Text style={styles.label}>Description</Text>
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.textArea]}
+            placeholder="Enter expense description"
             value={description}
             onChangeText={setDescription}
-            placeholder="Enter description"
             multiline
+            numberOfLines={4}
           />
-          <TouchableOpacity style={styles.editButton}>
-            <Feather name="edit-2" size={20} color="#6B7280" />
-          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Split Options */}
-      <View style={styles.splitSection}>
-        <Text style={styles.label}>Split Options</Text>
-        <View style={styles.splitButtonsContainer}>
+      {/* Split Type Selection */}
+      <View style={styles.inputSection}>
+        <Text style={styles.label}>Split Type</Text>
+        <View style={styles.splitTypeContainer}>
           <TouchableOpacity
-            style={[styles.splitButton, styles.cardShadow, splitType === 'even' && styles.activeButton]}
+            style={[styles.splitTypeButton, splitType === 'even' && styles.splitTypeButtonActive]}
             onPress={() => setSplitType('even')}
           >
-            <Feather name="divide" size={20} color={splitType === 'even' ? "#FFFFFF" : "#1F2937"} />
-            <Text style={[styles.splitButtonText, splitType === 'even' && styles.activeButtonText]}>
-              Split Evenly
+            <Text style={[styles.splitTypeText, splitType === 'even' && styles.splitTypeTextActive]}>
+              Even
             </Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
-            style={[styles.splitButton, styles.cardShadow, splitType === 'percentage' && styles.activeButton]}
+            style={[styles.splitTypeButton, splitType === 'percentage' && styles.splitTypeButtonActive]}
             onPress={() => setSplitType('percentage')}
           >
-            <Feather name="percent" size={20} color={splitType === 'percentage' ? "#FFFFFF" : "#1F2937"} />
-            <Text style={[styles.splitButtonText, splitType === 'percentage' && styles.activeButtonText]}>
-              By Percentage
+            <Text style={[styles.splitTypeText, splitType === 'percentage' && styles.splitTypeTextActive]}>
+              Percentage
             </Text>
           </TouchableOpacity>
-          
           <TouchableOpacity
-            style={[styles.splitButton, styles.cardShadow, splitType === 'amount' && styles.activeButton]}
+            style={[styles.splitTypeButton, splitType === 'amount' && styles.splitTypeButtonActive]}
             onPress={() => setSplitType('amount')}
           >
-            <Text style={[styles.dollarSymbol, splitType === 'amount' && styles.activeButtonText]}>$</Text>
-            <Text style={[styles.splitButtonText, splitType === 'amount' && styles.activeButtonText]}>
-              By Amount
+            <Text style={[styles.splitTypeText, splitType === 'amount' && styles.splitTypeTextActive]}>
+              Amount
             </Text>
           </TouchableOpacity>
         </View>
@@ -331,52 +317,38 @@ export const CreateExpenseForm: React.FC<CreateExpenseFormProps> = ({
 
       {/* Member Splits */}
       <View style={styles.inputSection}>
-        <Text style={styles.label}>Splits</Text>
+        <Text style={styles.label}>Split Details</Text>
         {selectedMembers.map((member) => (
-          <View key={member.user_id} style={[styles.memberSplit, styles.cardShadow]}>
+          <View key={member.user_id} style={styles.memberSplitContainer}>
             <Text style={styles.memberName}>{member.name}</Text>
             {splitType === 'percentage' ? (
-              <TextInput
-                style={styles.percentageInput}
-                value={member.percentage?.toFixed(1) || ''}
-                onChangeText={(text) => updateMemberPercentage(member.user_id, text)}
-                keyboardType="numeric"
-                placeholder="0.0"
-              />
-            ) : splitType === 'amount' ? (
-              <TextInput
-                style={styles.amountInput}
-                value={member.amount?.toFixed(2) || ''}
-                onChangeText={(text) => updateMemberAmount(member.user_id, text)}
-                keyboardType="numeric"
-                placeholder="0.00"
-              />
-            ) : null}
-            <Text style={styles.splitAmount}>
-              ${member.amount?.toFixed(2)}
-            </Text>
+              <View style={styles.percentageInputContainer}>
+                <TextInput
+                  style={styles.percentageInput}
+                  value={member.percentage?.toString() || ''}
+                  onChangeText={(value) => updateMemberPercentage(member.user_id, value)}
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.percentageSymbol}>%</Text>
+              </View>
+            ) : (
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={member.amount?.toString() || ''}
+                  onChangeText={(value) => updateMemberAmount(member.user_id, value)}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            )}
           </View>
         ))}
-        {splitType === 'percentage' && (
-          <Text style={styles.totalPercentage}>
-            Total: {selectedMembers.reduce((sum, member) => sum + (member.percentage || 0), 0).toFixed(1)}%
-          </Text>
-        )}
-        {splitType === 'amount' && (
-          <Text style={[
-            styles.totalAmount,
-            Math.abs(parseFloat(amount) - selectedMembers.reduce((sum, member) => sum + (member.amount || 0), 0)) > 0.01
-              ? styles.amountWarning
-              : styles.amountSuccess
-          ]}>
-            Remaining: ${(parseFloat(amount) - selectedMembers.reduce((sum, member) => sum + (member.amount || 0), 0)).toFixed(2)}
-          </Text>
-        )}
       </View>
 
-      {/* Done Button */}
-      <TouchableOpacity style={styles.doneButton} onPress={handleSubmit}>
-        <Text style={styles.doneButtonText}>Done</Text>
+      {/* Submit Button */}
+      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        <Text style={styles.submitButtonText}>Create Expense</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -385,142 +357,124 @@ export const CreateExpenseForm: React.FC<CreateExpenseFormProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   inputSection: {
     marginBottom: 24,
+    marginTop: 8,
   },
   label: {
     fontSize: 16,
+    fontWeight: '600',
     marginBottom: 8,
     color: '#1F2937',
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(209, 213, 219, 0.5)',
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingHorizontal: 16,
-    height: 48,
+    paddingVertical: 12,
   },
   input: {
-    flex: 1,
     fontSize: 16,
     color: '#1F2937',
   },
-  currencySymbol: {
-    fontSize: 18,
-    color: '#1F2937',
-    marginRight: 4,
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
   },
-  editButton: {
-    padding: 8,
-  },
-  splitSection: {
-    marginBottom: 32,
-  },
-  splitButtonsContainer: {
+  splitTypeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  splitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: 12,
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    flex: 1,
-    marginHorizontal: 4,
+    padding: 4,
   },
-  cardShadow: {
-    shadowColor: '#EA580C',
+  splitTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  splitTypeButtonActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  activeButton: {
-    backgroundColor: '#EA580C',
-  },
-  splitButtonText: {
+  splitTypeText: {
     fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  splitTypeTextActive: {
     color: '#1F2937',
-    marginLeft: 8,
+    fontWeight: '600',
   },
-  activeButtonText: {
-    color: '#FFFFFF',
-  },
-  dollarSymbol: {
-    fontSize: 16,
-    color: '#1F2937',
-  },
-  memberSplit: {
+  memberSplitContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFF',
-    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
+    padding: 16,
     marginBottom: 8,
   },
   memberName: {
     fontSize: 16,
     color: '#1F2937',
   },
+  percentageInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   percentageInput: {
-    width: 60,
-    height: 36,
-    backgroundColor: 'rgba(209, 213, 219, 0.5)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    textAlign: 'center',
-  },
-  amountInput: {
-    width: 80,
-    height: 36,
-    backgroundColor: 'rgba(209, 213, 219, 0.5)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    textAlign: 'center',
-  },
-  splitAmount: {
     fontSize: 16,
     color: '#1F2937',
-    fontWeight: '600',
+    width: 60,
+    textAlign: 'right',
   },
-  doneButton: {
+  percentageSymbol: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  amountInput: {
+    fontSize: 16,
+    color: '#1F2937',
+    width: 80,
+  },
+  submitButton: {
     backgroundColor: '#EA580C',
-    padding: 16,
     borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     marginTop: 24,
-    shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: 32,
   },
-  doneButtonText: {
-    color: '#FFFFFF',
+  submitButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  totalPercentage: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  totalAmount: {
-    fontSize: 14,
-    textAlign: 'right',
-    marginTop: 8,
-    fontWeight: '600',
-  },
-  amountWarning: {
-    color: '#DC2626', // red
-  },
-  amountSuccess: {
-    color: '#059669', // green
   },
 }); 
