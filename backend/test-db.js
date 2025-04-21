@@ -462,7 +462,9 @@ app.post("/api/login", passport.authenticate("local"), (req, res) => {
     user: {
       id: req.user.user_id,
       email: req.user.email,
-      name: `${req.user.first_name} ${req.user.last_name}`,
+      first_name: req.user.first_name,
+      last_name: req.user.last_name,
+      phone: req.user.phone
     },
   });
 });
@@ -485,7 +487,9 @@ app.get("/api/me", (req, res) => {
   res.json({
     id: req.user.user_id,
     email: req.user.email,
-    name: `${req.user.first_name} ${req.user.last_name}`,
+    first_name: req.user.first_name,
+    last_name: req.user.last_name,
+    phone: req.user.phone
   });
 });
 
@@ -1056,6 +1060,42 @@ app.get("/api/expenses", (req, res) => {
     });
 
     res.json(formattedResults);
+  });
+});
+
+// API endpoint to get expense totals and contributions
+app.get("/api/expenses/totals", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const query = `
+    SELECT 
+      SUM(e.total_amount) as total_amount,
+      SUM(CASE WHEN es.user_id = ? THEN es.amount ELSE 0 END) as user_contribution,
+      COUNT(DISTINCT e.expense_id) as total_expenses
+    FROM expenses e
+    JOIN expense_splits es ON e.expense_id = es.expense_id
+    WHERE es.user_id = ? AND e.is_active = 1
+  `;
+
+  pool.query(query, [req.user.user_id, req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error fetching expense totals:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    const totals = results[0];
+    const percentage = totals.total_amount > 0 
+      ? (totals.user_contribution / totals.total_amount * 100).toFixed(2)
+      : "0.00";
+
+    res.json({
+      total_amount: totals.total_amount || 0,
+      user_contribution: totals.user_contribution || 0,
+      total_expenses: totals.total_expenses || 0,
+      contribution_percentage: percentage
+    });
   });
 });
 

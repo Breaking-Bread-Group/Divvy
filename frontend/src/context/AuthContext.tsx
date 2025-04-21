@@ -6,7 +6,10 @@ const API_URL = 'http://localhost:8080';
 interface User {
     id: number;
     email: string;
-    name: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+    name?: string;
 }
 
 interface AuthContextType {

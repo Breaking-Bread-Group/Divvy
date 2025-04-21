@@ -1,13 +1,55 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
+import { useAuth } from '../../context/AuthContext';
+
+interface ExpenseTotals {
+  total_amount: number;
+  user_contribution: number;
+  total_expenses: number;
+  contribution_percentage: string;
+}
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [totals, setTotals] = useState<ExpenseTotals | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTotals = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8080/api/expenses/totals', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTotals(data);
+      }
+    } catch (error) {
+      console.error('Error fetching totals:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch totals when the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchTotals();
+    }, [fetchTotals])
+  );
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
 
   return (
     <ScrollView>
@@ -63,12 +105,20 @@ export default function Home() {
 
           {/* Total Section */}
           <View style={[styles.totalSection, styles.totalSectionShadow]}>
-            <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalAmount}>$257.85</Text>
-            <View style={styles.contributionRow}>
-              <Text style={styles.contributionLabel}>Your contribution:</Text>
-              <Text style={styles.contributionAmount}>$42.98 (16.67%)</Text>
-            </View>
+            {loading ? (
+              <ActivityIndicator size="large" color="#0000ff" />
+            ) : (
+              <>
+                <Text style={styles.totalLabel}>Total:</Text>
+                <Text style={styles.totalAmount}>{formatCurrency(totals?.total_amount || 0)}</Text>
+                <View style={styles.contributionRow}>
+                  <Text style={styles.contributionLabel}>Your contribution:</Text>
+                  <Text style={styles.contributionAmount}>
+                    {formatCurrency(totals?.user_contribution || 0)}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Action Buttons */}

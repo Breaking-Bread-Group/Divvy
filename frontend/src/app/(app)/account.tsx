@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function AccountSettings() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -15,6 +15,10 @@ export default function AccountSettings() {
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
+
+  if (!user) {
+    return null; // or a loading spinner
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,7 +50,7 @@ export default function AccountSettings() {
 
         {/* Name Section */}
         <View style={styles.nameSection}>
-          <Text style={styles.nameText}>John{'\n'}Anderson</Text>
+          <Text style={styles.nameText}>{user.first_name}{'\n'}{user.last_name}</Text>
           <TouchableOpacity style={styles.editNameButton}>
             <Feather name="edit-2" size={24} color="black" />
           </TouchableOpacity>
@@ -59,7 +63,7 @@ export default function AccountSettings() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                value="john.anderson@example.com"
+                value={user.email}
                 editable={false}
               />
               <TouchableOpacity style={styles.editButton}>
@@ -73,7 +77,7 @@ export default function AccountSettings() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                value="+1 (555) 123-4567"
+                value={user.phone || ''}
                 editable={false}
               />
               <TouchableOpacity style={styles.editButton}>
