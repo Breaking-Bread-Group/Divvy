@@ -1099,6 +1099,70 @@ app.get("/api/expenses/totals", (req, res) => {
   });
 });
 
+// API endpoint to get recent expenses
+app.get("/api/expenses/recent", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const query = `
+    SELECT 
+      e.expense_id,
+      e.title,
+      e.total_amount,
+      e.description,
+      e.is_settled,
+      e.is_active,
+      e.is_paid,
+      e.created_at,
+      g.title as group_title,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      es.amount as user_amount,
+      es.is_accepted,
+      es.is_paid as user_paid
+    FROM expenses e
+    JOIN divvy_groups g ON e.group_id = g.group_id
+    JOIN users u ON e.created_by = u.user_id
+    JOIN expense_splits es ON e.expense_id = es.expense_id
+    WHERE es.user_id = ? AND e.is_active = 1
+    ORDER BY e.created_at DESC
+    LIMIT 3
+  `;
+
+  pool.query(query, [req.user.user_id], (error, results) => {
+    if (error) {
+      console.error("Error fetching recent expenses:", error);
+      return res.status(500).json({ error: "Database error", details: error.message });
+    }
+
+    // Format the results
+    const formattedResults = results.map(expense => ({
+      id: expense.expense_id,
+      title: expense.title,
+      total_amount: expense.total_amount,
+      user_amount: expense.user_amount,
+      group_title: expense.group_title,
+      created_by: expense.created_by_name,
+      created_at: expense.created_at,
+      status: getExpenseStatus(expense),
+      description: expense.description
+    }));
+
+    res.json(formattedResults);
+  });
+});
+
+// Helper function to determine expense status
+function getExpenseStatus(expense) {
+  if (!expense.is_accepted) {
+    return 'Pending';
+  } else if (!expense.user_paid) {
+    return 'Unpaid';
+  } else {
+    return 'Paid';
+  }
+}
+
 const port = 8080;
 app.listen(port, () => {
   console.log(`Test server running at http://localhost:${port}`);

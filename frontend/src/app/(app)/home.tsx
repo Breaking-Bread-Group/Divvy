@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView, ActivityIndicator, Animated, PanResponder } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,35 +14,120 @@ interface ExpenseTotals {
   contribution_percentage: string;
 }
 
+interface RecentExpense {
+  id: number;
+  title: string;
+  total_amount: number;
+  user_amount: number;
+  group_title: string;
+  created_by: string;
+  created_at: string;
+  status: string;
+  description: string;
+}
+
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const [totals, setTotals] = useState<ExpenseTotals | null>(null);
+  const [recentExpenses, setRecentExpenses] = useState<RecentExpense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentExpenseIndex, setCurrentExpenseIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const swipeAnim = useRef(new Animated.Value(0)).current;
 
-  const fetchTotals = useCallback(async () => {
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to horizontal swipes
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Move the card with the gesture
+        swipeAnim.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const swipeThreshold = 50; // Minimum distance to trigger a swipe
+        const velocityThreshold = 0.3; // Minimum velocity to trigger a swipe
+
+        if (
+          Math.abs(gestureState.dx) > swipeThreshold ||
+          Math.abs(gestureState.vx) > velocityThreshold
+        ) {
+          const direction = gestureState.dx > 0 ? -1 : 1;
+          const newIndex = currentExpenseIndex + direction;
+
+          // Only animate if we have a valid index
+          if (newIndex >= 0 && newIndex < recentExpenses.length) {
+            // Fade out
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              // Change expense and fade in
+              setCurrentExpenseIndex(newIndex);
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+              }).start();
+            });
+          }
+        }
+
+        // Reset the swipe animation
+        Animated.spring(swipeAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/api/expenses/totals', {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTotals(data);
+      const [totalsResponse, expensesResponse] = await Promise.all([
+        fetch('http://localhost:8080/api/expenses/totals', { credentials: 'include' }),
+        fetch('http://localhost:8080/api/expenses/recent', { credentials: 'include' })
+      ]);
+
+      if (totalsResponse.ok) {
+        const totalsData = await totalsResponse.json();
+        setTotals(totalsData);
+      }
+
+      if (expensesResponse.ok) {
+        const expensesData = await expensesResponse.json();
+        setRecentExpenses(expensesData);
       }
     } catch (error) {
-      console.error('Error fetching totals:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch totals when the screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchTotals();
-    }, [fetchTotals])
+      fetchData();
+    }, [fetchData])
   );
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && currentExpenseIndex > 0) {
+        handleExpenseChange(currentExpenseIndex - 1);
+      } else if (e.key === 'ArrowRight' && currentExpenseIndex < recentExpenses.length - 1) {
+        handleExpenseChange(currentExpenseIndex + 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentExpenseIndex, recentExpenses.length]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -51,152 +136,249 @@ export default function Home() {
     }).format(amount);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return '#7C2D12';
+      case 'unpaid':
+        return '#B45309';
+      case 'paid':
+        return '#065F46';
+      default:
+        return '#7C2D12';
+    }
+  };
+
+  const handleExpenseChange = (index: number) => {
+    // Fade out
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      // Change expense and fade in
+      setCurrentExpenseIndex(index);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
   return (
-    <ScrollView>
-    <BackgroundGradient>
-      <SafeAreaView style={styles.container}>
-        {/* Profile and Bell */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => router.push('/(app)/account')}
-          >
-            <Image
-              source={require('../../assets/Account_Settings.png')}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.notificationContainer, styles.iconShadow]}
-            onPress={() => router.push('/(app)/notifications')}
-          >
-            <Feather name="bell" size={24} color="black" />
-            <View style={styles.notificationDot} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.content}>
-          <Text style={styles.title}>Latest Expenses</Text>
-          <Text style={styles.subtitle}>Some expenses need your attention</Text>
-
-          {/* Expense Card */}
-          <TouchableOpacity onPress={() => {}}>
-            <LinearGradient
-              colors={['#FED7AA', '#FB923C', '#EA580C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.expenseCard, styles.cardShadow]}
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={{ flexGrow: 1 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <BackgroundGradient>
+        <SafeAreaView style={styles.container}>
+          {/* Profile and Bell */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.profileButton}
+              onPress={() => router.push('/(app)/account')}
             >
-              <View style={styles.expenseHeader}>
-                <Text style={[styles.expenseStatus, { color: '#7C2D12' }]}>Awaiting</Text>
-                <Text style={[styles.expenseTitle, { color: '#7C2D12' }]}>Acceptance</Text>
-              </View>
-              <Text style={[styles.expenseDescription, { color: '#7C2D12' }]}>"Company Dinner"</Text>
-              <Text style={[styles.expenseDate, { color: '#7C2D12' }]}>Mar-24 2025</Text>
+              <Image
+                source={require('../../assets/Account_Settings.png')}
+                style={styles.profileImage}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.notificationContainer, styles.iconShadow]}
+              onPress={() => router.push('/(app)/notifications')}
+            >
+              <Feather name="bell" size={24} color="black" />
+              <View style={styles.notificationDot} />
+            </TouchableOpacity>
+          </View>
 
-              {/* Pagination Dots */}
-              <View style={styles.paginationDots}>
-                <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
-                <View style={[styles.dot, { backgroundColor: '#7C2D12', opacity: 0.3 }]} />
-                <View style={[styles.activeDot, { backgroundColor: '#7C2D12', opacity: 0.7 }]} />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={styles.content}>
+            <Text style={styles.title}>Latest Expenses</Text>
+            <Text style={styles.subtitle}>Some expenses need your attention</Text>
 
-          {/* Total Section */}
-          <View style={[styles.totalSection, styles.totalSectionShadow]}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#0000ff" />
-            ) : (
-              <>
-                <Text style={styles.totalLabel}>Total:</Text>
-                <Text style={styles.totalAmount}>{formatCurrency(totals?.total_amount || 0)}</Text>
-                <View style={styles.contributionRow}>
-                  <Text style={styles.contributionLabel}>Your contribution:</Text>
-                  <Text style={styles.contributionAmount}>
-                    {formatCurrency(totals?.user_contribution || 0)}
-                  </Text>
-                </View>
-              </>
+            {/* Expense Card */}
+            {recentExpenses.length > 0 && (
+              <Animated.View 
+                style={[
+                  { opacity: fadeAnim },
+                  {
+                    transform: [
+                      {
+                        translateX: swipeAnim.interpolate({
+                          inputRange: [-200, 0, 200],
+                          outputRange: [-200, 0, 200],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+                {...panResponder.panHandlers}
+              >
+                <LinearGradient
+                  colors={['#FED7AA', '#FB923C', '#EA580C']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.expenseCard, styles.cardShadow]}
+                >
+                  <View style={styles.expenseHeader}>
+                    <Text style={[styles.expenseStatus, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                      {recentExpenses[currentExpenseIndex].status}
+                    </Text>
+                    <View style={styles.titleRow}>
+                      <Text style={[styles.expenseDescription, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                        "{recentExpenses[currentExpenseIndex].title}"
+                      </Text>
+                      <Text style={[styles.separator, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                        |
+                      </Text>
+                      <View style={styles.groupContainer}>
+                        <Text style={[styles.expenseGroup, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                          {recentExpenses[currentExpenseIndex].group_title}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity 
+                      onPress={() => router.push(`/(app)/expense/${recentExpenses[currentExpenseIndex].id}`)}
+                    >
+                      <Text style={[styles.expenseTitle, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                        {formatCurrency(recentExpenses[currentExpenseIndex].user_amount)}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={[styles.expenseDate, { color: getStatusColor(recentExpenses[currentExpenseIndex].status) }]}>
+                      {formatDate(recentExpenses[currentExpenseIndex].created_at)}
+                    </Text>
+                  </View>
+
+                  {/* Pagination Dots */}
+                  {recentExpenses.length > 1 && (
+                    <View style={styles.paginationDots}>
+                      {recentExpenses.map((_, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() => handleExpenseChange(index)}
+                        >
+                          <View 
+                            style={[
+                              styles.dot, 
+                              { 
+                                backgroundColor: getStatusColor(recentExpenses[currentExpenseIndex].status),
+                                opacity: index === currentExpenseIndex ? 0.7 : 0.3
+                              }
+                            ]} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </LinearGradient>
+              </Animated.View>
             )}
+
+            {/* Total Section */}
+            <View style={[styles.totalSection, styles.totalSectionShadow]}>
+              {loading ? (
+                <ActivityIndicator size="large" color="#0000ff" />
+              ) : (
+                <>
+                  <Text style={styles.totalLabel}>Total:</Text>
+                  <Text style={styles.totalAmount}>{formatCurrency(totals?.total_amount || 0)}</Text>
+                  <View style={styles.contributionRow}>
+                    <Text style={styles.contributionLabel}>Your contribution:</Text>
+                    <Text style={styles.contributionAmount}>
+                      {formatCurrency(totals?.user_contribution || 0)}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.actionButtonShadow]}
+                onPress={() => router.push('/(app)/create-group')}
+              >
+                <LinearGradient
+                  colors={['#FFE8D2', '#FDB78F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <Feather name="users" size={24} color="#1F2937" />
+                  <Text style={[styles.actionButtonText]}>
+                    Manage{'\n'}Groups
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.actionButtonShadow]}
+                onPress={() => router.push('/(app)/create-expense')}
+              >
+                <LinearGradient
+                  colors={['#FFE8D2', '#FDB78F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <Feather name="plus" size={24} color="#1F2937" />
+                  <Text style={[styles.actionButtonText]}>
+                    Create{'\n'}Expense
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.actionButtonShadow]}
+                onPress={() => router.push('/(app)/home')}
+              >
+                <LinearGradient
+                  colors={['#FFE8D2', '#FDB78F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <Feather name="credit-card" size={24} color="#1F2937" />
+                  <Text style={[styles.actionButtonText]}>
+                    Payment{'\n'}Settings
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.actionButtonShadow]}
+                onPress={() => router.push('/(app)/manage-expenses')}
+              >
+                <LinearGradient
+                  colors={['#FFE8D2', '#FDB78F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <Feather name="list" size={24} color="#1F2937" />
+                  <Text style={[styles.actionButtonText]}>
+                    Manage{'\n'}Expenses
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>       
+            </View>
+
+            {/* Divvy Text */}
+            <Text style={styles.divvyText}>© 2025 Divvy</Text>
           </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/create-group')}
-            >
-              <LinearGradient
-                colors={['#FFE8D2', '#FDB78F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.actionButtonGradient}
-              >
-                <Feather name="users" size={24} color="#1F2937" />
-                <Text style={[styles.actionButtonText]}>
-                  Manage{'\n'}Groups
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/create-expense')}
-            >
-              <LinearGradient
-                colors={['#FFE8D2', '#FDB78F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.actionButtonGradient}
-              >
-                <Feather name="plus" size={24} color="#1F2937" />
-                <Text style={[styles.actionButtonText]}>
-                  Create{'\n'}Expense
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/home')}
-            >
-              <LinearGradient
-                colors={['#FFE8D2', '#FDB78F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.actionButtonGradient}
-              >
-                <Feather name="credit-card" size={24} color="#1F2937" />
-                <Text style={[styles.actionButtonText]}>
-                  Payment{'\n'}Settings
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonShadow]}
-              onPress={() => router.push('/(app)/manage-expenses')}
-            >
-              <LinearGradient
-                colors={['#FFE8D2', '#FDB78F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.actionButtonGradient}
-              >
-                <Feather name="list" size={24} color="#1F2937" />
-                <Text style={[styles.actionButtonText]}>
-                  Manage{'\n'}Expenses
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>       
-          </View>
-
-          {/* Divvy Text */}
-          <Text style={styles.divvyText}>© 2025 Divvy</Text>
-        </View>
-      </SafeAreaView>
-    </BackgroundGradient>
+        </SafeAreaView>
+      </BackgroundGradient>
     </ScrollView>
   );
 }
@@ -204,6 +386,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -213,11 +396,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   profileButton: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
   profileImage: {
     width: 40,
@@ -249,6 +432,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 32,
@@ -279,23 +463,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     opacity: 0.7,
+    marginBottom: 8,
   },
   expenseTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#000',
+    marginBottom: 8,
   },
   expenseDescription: {
     fontSize: 20,
     fontStyle: 'italic',
-    marginBottom: 4,
     color: '#000',
   },
   expenseDate: {
     fontSize: 14,
     color: '#000',
     opacity: 0.7,
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  expenseGroup: {
+    fontSize: 14,
+    color: '#000',
+    opacity: 0.7,
+    fontStyle: 'italic',
   },
   paginationDots: {
     flexDirection: 'row',
@@ -307,13 +498,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-  },
-  activeDot: {
-    width: 24,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#000',
-    opacity: 0.7,
   },
   totalSection: {
     marginBottom: 24,
@@ -389,5 +573,20 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginTop: 24,
+    marginBottom: 20,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  groupContainer: {
+    justifyContent: 'center',
+    height: 24, // Match the height of the expense name
+  },
+  separator: {
+    fontSize: 20,
+    marginHorizontal: 8,
+    opacity: 0.7,
   },
 }); 
