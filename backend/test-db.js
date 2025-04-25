@@ -97,7 +97,7 @@ app.use((req, res, next) => {
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Mkilop12!",
+  password: "1204",
   database: "divvy",
   port: 3306,
   waitForConnections: true,
@@ -456,18 +456,31 @@ app.post("/api/register", async (req, res) => {
 });
 
 // Login endpoint
-app.post("/api/login", passport.authenticate("local"), (req, res) => {
-  res.json({
-    message: "Login successful",
-    user: {
-      id: req.user.user_id,
-      email: req.user.email,
-      first_name: req.user.first_name,
-      last_name: req.user.last_name,
-      phone: req.user.phone
-    },
-  });
+app.post("/api/login", (req, res, next) => {
+  passport.authenticate("local", (err, user, info) => {
+    if (err) return next(err);
+    if (!user) {
+      // Login failed: send JSON error
+      return res.status(401).json({ message: info?.message || "Invalid credentials" });
+    }
+
+    // Login succeeded, log them in manually
+    req.logIn(user, (err) => {
+      if (err) return next(err);
+      res.json({
+        message: "Login successful",
+        user: {
+          id: user.user_id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone
+        }
+      });
+    });
+  })(req, res, next); // <- immediately invoke the strategy
 });
+
 
 // Logout endpoint
 app.post("/api/logout", (req, res) => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StatusBar, View, Alert } from 'react-native';
+import { StatusBar, View, Alert, Platform } from 'react-native';
 import { Formik } from 'formik';
 import { useRouter } from 'expo-router';
 import { Octicons, Ionicons } from '@expo/vector-icons';
@@ -35,10 +35,11 @@ export default function Login() {
         try {
             await login(values.email, values.password);
         } catch (error) {
-            Alert.alert(
-                'Login Failed',
-                error instanceof Error ? error.message : 'Invalid email or password'
-            );
+            if (Platform.OS === 'web') {
+                window.alert('Login Failed: ' + (error.message || 'Invalid email or password'));
+              } else {
+                Alert.alert('Login Failed', error.message || 'Invalid email or password');
+              }              
         }
     };
 

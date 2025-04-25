@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StatusBar, View, Alert, ScrollView } from 'react-native';
+import { StatusBar, View, Alert, ScrollView, Platform } from 'react-native';
 import { Formik } from 'formik';
 import { useRouter } from 'expo-router';
 import { Octicons, Ionicons } from '@expo/vector-icons';
@@ -42,9 +42,13 @@ export default function Signup() {
         try {
             // Validate passwords match
             if (values.password !== values.confirmPassword) {
-                Alert.alert('Error', 'Passwords do not match');
+                if (Platform.OS === 'web') {
+                  window.alert('Passwords do not match');
+                } else {
+                  Alert.alert('Error', 'Passwords do not match');
+                }
                 return;
-            }
+              }
 
             await register({
                 email: values.email,
@@ -54,14 +58,19 @@ export default function Signup() {
                 phone: values.phone,
             });
 
-            Alert.alert('Success', 'Account created successfully! Please login.');
-        } catch (error) {
-            Alert.alert(
-                'Signup Failed',
-                error instanceof Error ? error.message : 'Failed to create account'
-            );
-        }
-    };
+            if (Platform.OS === 'web') {
+                window.alert('Account created successfully! Please login.');
+              } else {
+                Alert.alert('Success', 'Account created successfully! Please login.');
+              }
+            } catch (error) {
+              if (Platform.OS === 'web') {
+                window.alert(error instanceof Error ? error.message : 'Failed to create account');
+              } else {
+                Alert.alert('Signup Failed', error instanceof Error ? error.message : 'Failed to create account');
+              }
+            }
+          };
 
     return (
         <ScrollView>
