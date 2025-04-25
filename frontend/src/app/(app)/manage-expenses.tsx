@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { BackgroundGradient } from '../../components/BackgroundGradient';
 import { useAuth } from '../../context/AuthContext';
 import { useExpense } from '../../context/ExpenseContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 export default function ManageExpenses() {
   const router = useRouter();
@@ -25,6 +27,12 @@ export default function ManageExpenses() {
 
     loadExpenses();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchExpenses();
+    }, [])
+  );  
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

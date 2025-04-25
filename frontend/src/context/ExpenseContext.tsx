@@ -46,14 +46,14 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createExpense = async (groupId: number, expenseData: any) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/groups/${groupId}/expenses`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}/splits/${splitId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'credentials': 'include',
         },
-        body: JSON.stringify(expenseData),
-      });
+        credentials: 'include', // this sends session cookie
+        body: JSON.stringify({ is_accepted: isAccepted, is_paid: isPaid }),
+      });      
 
       if (!response.ok) {
         throw new Error('Failed to create expense');
@@ -123,9 +123,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}/splits/${splitId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'credentials': 'include',
+          'Content-Type': 'application/json',          
         },
+        'credentials': 'include',
         body: JSON.stringify({ is_accepted: isAccepted, is_paid: isPaid }),
       });
 
@@ -138,6 +138,9 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (expense) {
         await getGroupExpenses(expense.group_id);
       }
+
+      await fetchExpenses();
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       Alert.alert('Error', 'Failed to update expense split');

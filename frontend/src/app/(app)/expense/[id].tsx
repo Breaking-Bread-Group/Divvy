@@ -1,19 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BackgroundGradient } from '../../../components/BackgroundGradient';
 import { useAuth } from '../../../context/AuthContext';
 import { useExpense } from '../../../context/ExpenseContext';
 
+interface Split {
+  split_id: number;
+  user_id: number;
+  amount: number;
+  percentage: number;
+  is_accepted: boolean;
+  is_paid: boolean;
+  user_name: string;
+}
+
 export default function ExpenseDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-  const { expenses, updateExpenseSplit } = useExpense();
+  const { expenses, updateExpenseSplit, fetchExpenses } = useExpense();
   const [loading, setLoading] = useState(false);
   const [expense, setExpense] = useState(null);
-  const [userSplit, setUserSplit] = useState(null);
+  const [userSplit, setUserSplit] = useState<Split | null>(null);
 
   useEffect(() => {
     const foundExpense = expenses.find(e => e.expense_id === parseInt(id));
@@ -37,26 +48,52 @@ export default function ExpenseDetail() {
     try {
       setLoading(true);
       await updateExpenseSplit(expense.expense_id, userSplit.split_id, true, userSplit.is_paid);
-      Alert.alert('Success', 'Expense accepted successfully');
+      await fetchExpenses();
+      setUserSplit(prev => prev ? { ...prev, is_accepted: true } : prev);
+  
+      if (Platform.OS === 'web') {
+        window.alert('Expense accepted successfully');
+      } else {
+        Alert.alert('Success', 'Expense accepted successfully');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to accept expense');
+      if (Platform.OS === 'web') {
+        window.alert('Failed to accept expense');
+      } else {
+        Alert.alert('Error', 'Failed to accept expense');
+      }
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleMarkAsPaid = async () => {
     try {
       setLoading(true);
       await updateExpenseSplit(expense.expense_id, userSplit.split_id, userSplit.is_accepted, true);
-      Alert.alert('Success', 'Expense marked as paid');
+      await fetchExpenses();
+      setUserSplit(prev => prev ? { ...prev, is_paid: true } : prev);
+  
+      if (Platform.OS === 'web') {
+        window.alert('Expense marked as paid');
+      } else {
+        Alert.alert('Success', 'Expense marked as paid');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to mark expense as paid');
+      if (Platform.OS === 'web') {
+        window.alert('Failed to mark expense as paid');
+      } else {
+        Alert.alert('Error', 'Failed to mark expense as paid');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  
   if (!expense) {
     return (
       <BackgroundGradient>
@@ -72,22 +109,22 @@ export default function ExpenseDetail() {
   return (
     <BackgroundGradient>
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+      <View style={styles.header}>
+        <View style={{ width: 40 }}>
+          <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={24} color="black" />
           </TouchableOpacity>
-          <Text style={styles.title}>Expense Details</Text>
-          <View style={styles.headerRight} />
         </View>
+        <Text style={styles.title}>Expense Details</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
 
         <ScrollView style={styles.content}>
           <View style={styles.expenseCard}>
             <Text style={styles.expenseTitle}>{expense.title}</Text>
             <Text style={styles.groupName}>Group: {expense.group_title}</Text>
-            <Text style={styles.amount}>Total Amount: ${Number(expense.total_amount || 0).toFixed(2)}</Text>
+            <Text style={styles.amount}>Total Amount: {formatCurrency(expense.total_amount)}</Text>
             <Text style={styles.date}>Date: {formatDate(expense.created_at)}</Text>
             <Text style={styles.description}>
               {expense.description || 'No description provided'}
@@ -100,7 +137,7 @@ export default function ExpenseDetail() {
               <View key={split.split_id} style={styles.splitCard}>
                 <View style={styles.splitHeader}>
                   <Text style={styles.splitName}>{split.user_name}</Text>
-                  <Text style={styles.splitAmount}>${split.amount.toFixed(2)}</Text>
+                  <Text style={styles.splitAmount}>{formatCurrency(split.amount)}</Text>
                 </View>
                 <View style={styles.splitDetails}>
                   <Text style={styles.splitPercentage}>{split.percentage}%</Text>
@@ -127,7 +164,7 @@ export default function ExpenseDetail() {
             <View style={styles.actionsSection}>
               <Text style={styles.sectionTitle}>Your Actions</Text>
               <View style={styles.actionButtons}>
-                {!userSplit.is_accepted && (
+                {!userSplit.is_accepted ? (
                   <TouchableOpacity 
                     style={[styles.actionButton, styles.acceptButton]}
                     onPress={handleAccept}
@@ -135,8 +172,8 @@ export default function ExpenseDetail() {
                   >
                     <Text style={styles.actionButtonText}>Accept Expense</Text>
                   </TouchableOpacity>
-                )}
-                {userSplit.is_accepted && !userSplit.is_paid && (
+                ) : null}
+                {userSplit.is_accepted && !userSplit.is_paid ? (
                   <TouchableOpacity 
                     style={[styles.actionButton, styles.payButton]}
                     onPress={handleMarkAsPaid}
@@ -144,10 +181,12 @@ export default function ExpenseDetail() {
                   >
                     <Text style={styles.actionButtonText}>Mark as Paid</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
+
               </View>
             </View>
           )}
+          
         </ScrollView>
       </SafeAreaView>
     </BackgroundGradient>
@@ -275,13 +314,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   actionButtons: {
-    gap: 12,
+    flexDirection: 'column',
   },
   actionButton: {
+    marginBottom: 12,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-  },
+  },  
   acceptButton: {
     backgroundColor: '#10B981',
   },

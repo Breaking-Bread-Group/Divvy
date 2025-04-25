@@ -1102,18 +1102,25 @@ app.get("/api/expenses", (req, res) => {
     // Format the results
     const formattedResults = results.map(row => {
       try {
+        const splits = typeof row.splits === 'string' ? JSON.parse(row.splits) : row.splits;
+        const currentUserSplit = splits.find(s => s.user_id === req.user.user_id);
+    
         return {
           ...row,
-          splits: row.splits ? (typeof row.splits === 'string' ? JSON.parse(row.splits) : row.splits) : []
+          splits,
+          is_accepted: currentUserSplit?.is_accepted ?? false,
+          is_paid: currentUserSplit?.is_paid ?? false,
         };
       } catch (err) {
-        console.error('Error parsing splits:', err);
         return {
           ...row,
-          splits: []
+          splits: [],
+          is_accepted: false,
+          is_paid: false,
         };
       }
     });
+    
 
     res.json(formattedResults);
   });
