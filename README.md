@@ -11,59 +11,6 @@ Divvy is a mobile application designed to simplify group expense management. It 
 <img width="250" height="460" alt="Screenshot 2025-05-24 at 6 40 57 PM" src="https://github.com/user-attachments/assets/ca95c497-2768-4fb4-81a0-0da34d9d0373" />
 <img width="250" height="460" alt="Screenshot 2025-05-24 at 6 40 44 PM" src="https://github.com/user-attachments/assets/9abc5b52-3e04-45b6-b79b-4eb64419e0b8" />
 
-
-## Deploy Backend
-
-1. Install dependencies
-
-  ```bash
-  cd backend && npm install
-  ```
-
-2. Generate certs
-
-  ```bash
-  sh ssl.sh
-  ```
-
-3. Create ServerSettings.json
-
-  ```bash
-  cp ServerSettings.json.template ServerSettings.json
-  ```
-
-4. Fill in the blank values of ServerSettings.json with appropriate settings. They are sensitive information and must not be uploaded outside of the machine.
-
-5. Create the database by running SetupServer.sql in your mysql interface of choice
-
-- Commands to build or run it:
-  ```
-  npm run build              - Build the server, but do not run when finished
-  npm run start / npm start  - Run the server, but do not rebuild (will use existing build, make sure it has already been built)
-  npm run full               - Build and Run the server when completed
-  ```
-
-## Deploy Test Server
-
-1. Install dependencies
-
-   ```bash
-   cd frontend/src && npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-3. Open the app [Open below link for web, or scan QR code for IOS/Android]
-
-   ```bash
-    http://localhost:8081
-   ```
-- In test server, username/password are currently placeholders. Just click Signup/Login to continue.
-
 ## Features
 
 - **User Account Management**
@@ -113,7 +60,60 @@ Divvy is a mobile application designed to simplify group expense management. It 
 
 ## Getting Started
 
-TBD
+
+## Installation
+
+# Deploy Backend
+
+1. Install dependencies
+
+  ```bash
+  cd backend && npm install
+  ```
+
+2. Generate certs
+
+  ```bash
+  sh ssl.sh
+  ```
+
+3. Create ServerSettings.json
+
+  ```bash
+  cp ServerSettings.json.template ServerSettings.json
+  ```
+
+4. Fill in the blank values of ServerSettings.json with appropriate settings. They are sensitive information and must not be uploaded outside of the machine.
+
+5. Create the database by running SetupServer.sql in your mysql interface of choice
+
+- Commands to build or run it:
+  ```
+  npm run build              - Build the server, but do not run when finished
+  npm run start / npm start  - Run the server, but do not rebuild (will use existing build, make sure it has already been built)
+  npm run full               - Build and Run the server when completed
+  ```
+
+# Deploy Test Server
+
+1. Install dependencies
+
+   ```bash
+   cd frontend/src && npm install
+   ```
+
+2. Start the app
+
+   ```bash
+    npx expo start
+   ```
+
+3. Open the app [Open below link for web, or scan QR code for IOS/Android]
+
+   ```bash
+    http://localhost:8081
+   ```
+- In test server, username/password are currently placeholders. Just click Signup/Login to continue.
 
 
 ## Acknowledgements
