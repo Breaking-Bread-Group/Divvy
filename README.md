@@ -2,7 +2,7 @@
 
 Divvy is a mobile application designed to simplify group expense management. It tackles the common challenge of splitting bills fairly—whether among roommates, friends, couples, or temporary groups—by tracking payments and debts, and automating expense calculations.
 
-## Showcase
+## Product Showcase
 
 <img width="250" height="460" alt="Screenshot 2025-05-24 at 6 38 11 PM" src="https://github.com/user-attachments/assets/424b395a-c36c-4000-9d82-0fae83915a7c" />
 <img width="250" height="460" alt="Screenshot 2025-05-24 at 6 36 59 PM" src="https://github.com/user-attachments/assets/d717e7dd-41f1-4f83-be01-d8096283acf2" />
