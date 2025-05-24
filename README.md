@@ -60,9 +60,6 @@ Divvy is a mobile application designed to simplify group expense management. It 
 
 ## Getting Started
 
-
-## Installation
-
 # Deploy Backend
 
 1. Install dependencies
