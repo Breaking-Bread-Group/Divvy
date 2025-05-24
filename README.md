@@ -60,7 +60,7 @@ Divvy is a mobile application designed to simplify group expense management. It 
 
 ## Getting Started
 
-# Deploy Backend
+### Deploy Backend
 
 1. Install dependencies
 
@@ -91,7 +91,7 @@ Divvy is a mobile application designed to simplify group expense management. It 
   npm run full               - Build and Run the server when completed
   ```
 
-# Deploy Test Server
+### Deploy Test Server
 
 1. Install dependencies
 
